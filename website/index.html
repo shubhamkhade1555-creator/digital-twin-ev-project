@@ -1,103 +1,138 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EV Digital Twin - Fault scenarios and sweep</title>
+<title>EV Digital Twin - Fault scenarios, test cases and logs</title>
 <style>
 :root{--bg:#0b1020;--card:#131a2e;--card2:#0f1526;--line:#243049;--txt:#e6ebf5;--mut:#8b97b3;--ok:#2ecc8f;--warn:#f5b83d;--bad:#ff5d6c;--acc:#5b9dff;--acc2:#b07cff}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 16px;border-bottom:1px solid var(--line)}
-h1{font-size:17px;margin:0}h1 span{color:var(--acc)}
-nav{display:flex;gap:4px;padding:6px 16px;border-bottom:1px solid var(--line);overflow-x:auto}
-nav button{background:none;border:1px solid transparent;color:var(--mut);padding:6px 12px;white-space:nowrap;cursor:pointer;font:inherit;font-weight:600}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:12px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid var(--line);flex:0 0 auto}
+h1{font-size:15px;margin:0}h1 span{color:var(--acc)}
+nav{display:flex;gap:3px;padding:4px 14px;border-bottom:1px solid var(--line);overflow-x:auto;flex:0 0 auto}
+nav button{background:none;border:1px solid transparent;color:var(--mut);padding:5px 10px;white-space:nowrap;cursor:pointer;font:inherit;font-weight:600;font-size:12px}
 nav button.on{background:#1b2542;border-color:var(--acc);color:var(--txt)}
-main{padding:10px 16px}
-.tab{display:none}.tab.on{display:flex;flex-direction:column;gap:10px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
-.card h2{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+main{flex:1;min-height:0;overflow:auto;padding:8px 14px}
+.tab{display:none}
+.tab.on{display:flex;flex-direction:column;gap:8px;min-height:0}
+#t_dash.on{display:grid;grid-template-columns:290px minmax(0,1fr);gap:10px;height:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.card h2{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
 .scroll{overflow:auto;max-width:100%}
-.dash{display:grid;grid-template-columns:minmax(280px,330px) minmax(0,1fr);gap:10px;align-items:start}
-.ctl{display:flex;flex-direction:column;gap:10px}
-.rt{display:flex;flex-direction:column;gap:10px;min-width:0}
-.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
-.kpi b{font-size:19px;font-variant-numeric:tabular-nums}.kpi i{font-style:normal;font-size:11px;color:var(--mut)}
-.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;min-height:18px}
+.ctl{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:auto;padding-right:2px}
+.rt{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;flex:0 0 auto}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.kpi b{font-size:16px;font-variant-numeric:tabular-nums}.kpi i{font-style:normal;font-size:10px;color:var(--mut)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;min-height:16px;flex:0 0 auto}
 .sw{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
-.charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.ch{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px;height:240px;display:flex;flex-direction:column;min-width:0}
-.ch h3{margin:0 0 2px;font-size:12px}
-.ch small{font-size:10px;line-height:1.3;min-height:14px;overflow:hidden}
+.charts{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px}
+.ch{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 7px;min-height:0;min-width:0;display:flex;flex-direction:column}
+.ch h3{margin:0 0 2px;font-size:11px}
+.ch small{font-size:10px;line-height:1.25;min-height:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .cw{position:relative;flex:1;min-height:0}
 canvas{position:absolute;inset:0;width:100%;height:100%}
-label{display:block;font-size:11px;color:var(--mut);margin:4px 0 1px}
-label.chk{display:flex;gap:6px;align-items:center;color:var(--txt);font-size:12px;margin:4px 0}label.chk input{width:auto}
-input,select{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);padding:5px 7px;border-radius:7px;font:inherit}
+.sweep{flex:0 0 auto;max-height:180px;overflow:auto}
+label{display:block;font-size:10px;color:var(--mut);margin:3px 0 1px}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--txt);font-size:12px;margin:3px 0}label.chk input{width:auto}
+input,select{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);padding:4px 6px;border-radius:6px;font:inherit}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-button{cursor:pointer;border:1px solid var(--line);background:#1b2542;color:var(--txt);padding:7px 10px;border-radius:8px;font:inherit;font-weight:600}
-button:hover{border-color:var(--acc)}button.p{background:linear-gradient(135deg,#3b7cff,#7b5cff);border:0}
+button{cursor:pointer;border:1px solid var(--line);background:#1b2542;color:var(--txt);padding:6px 9px;border-radius:7px;font:inherit;font-weight:600;font-size:12px}
+button:hover{border-color:var(--acc)}
+button.p{background:linear-gradient(135deg,#3b7cff,#7b5cff);border:0}
 button.g{background:linear-gradient(135deg,#2a9d6b,#1f7a52);border:0}
-.btns{display:flex;flex-wrap:wrap;gap:6px}.btns button{flex:1 1 45%;font-size:12px}
-.bar{height:5px;background:var(--card2);border-radius:9px;overflow:hidden}.bar div{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2))}
-.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid}
-.PASS{color:var(--ok);border-color:#2ecc8f55;background:#2ecc8f14}.WARN{color:var(--warn);border-color:#f5b83d55;background:#f5b83d14}
-.FAIL{color:var(--bad);border-color:#ff5d6c55;background:#ff5d6c14}.idle{color:var(--mut);border-color:var(--line)}
-table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:5px 7px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600}
+.btns{display:flex;flex-wrap:wrap;gap:6px}.btns button{flex:1 1 45%}
+.bar{height:4px;background:var(--card2);border-radius:9px;overflow:hidden}.bar div{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:10px;font-weight:600;border:1px solid}
+.PASS,.MATCH{color:var(--ok);border-color:#2ecc8f55;background:#2ecc8f14}
+.WARN{color:var(--warn);border-color:#f5b83d55;background:#f5b83d14}
+.FAIL,.MISMATCH{color:var(--bad);border-color:#ff5d6c55;background:#ff5d6c14}
+.idle,.SKIP{color:var(--mut);border-color:var(--line)}
+table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600}
 .mut{color:var(--mut)}
-ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:4px 0}
-.calc div{font:12px/1.55 Consolas,monospace;margin:2px 0;white-space:pre-wrap}
-#toasts{position:fixed;right:16px;bottom:16px;display:grid;gap:8px;z-index:20;max-width:380px}
-.toast{background:#1a223c;border:1px solid var(--line);border-left:4px solid var(--warn);padding:9px 12px;border-radius:9px}
+ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:3px 0}
+.calc div{font:11px/1.5 Consolas,monospace;margin:2px 0;white-space:pre-wrap}
+.logbox{flex:1;min-height:280px;max-height:62vh;overflow:auto;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:8px;font:11px/1.45 Consolas,monospace;white-space:pre-wrap;margin:0}
+#toasts{position:fixed;right:14px;bottom:14px;display:grid;gap:6px;z-index:20;max-width:360px}
+.toast{background:#1a223c;border:1px solid var(--line);border-left:4px solid var(--warn);padding:8px 11px;border-radius:8px}
 .toast.bad{border-left-color:var(--bad)}.toast.good{border-left-color:var(--ok)}
 #modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:30;padding:20px}
-#modal .box{background:var(--card);border:1px solid var(--bad);border-radius:14px;max-width:620px;width:100%;padding:20px}
-#modal h2{margin:0 0 8px;color:var(--bad);font-size:17px;text-transform:none;letter-spacing:0}
+#modal .box{background:var(--card);border:1px solid var(--bad);border-radius:12px;max-width:600px;width:100%;padding:18px}
+#modal h2{margin:0 0 8px;color:var(--bad);font-size:15px;text-transform:none;letter-spacing:0}
 #modal ul{padding-left:18px}#modal.w .box{border-color:var(--warn)}#modal.w h2{color:var(--warn)}
-@media(max-width:1100px){.dash{grid-template-columns:1fr}.charts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1100px){
+ #t_dash.on{grid-template-columns:1fr;height:auto}
+ .ctl{overflow:visible}
+ .charts{grid-template-rows:none;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ch{height:230px}
+}
 @media(max-width:640px){.charts{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:1fr}}
 </style></head><body>
-<header><div><h1>EV <span>Digital Twin</span> - fault scenarios, sweep and protection</h1>
+<div id="app">
+<header><div><h1>EV <span>Digital Twin</span> - fault scenarios, test cases and logs</h1>
 <small class="mut">BLDC APBA80L048030-EB - 13S10P 50 Ah - defaults = BLDCSpeedControlData.m</small></div>
 <div><span id="status" class="pill idle">READY</span></div></header>
 <nav id="nav">
-<button data-t="dash" class="on">Dashboard</button><button data-t="scn">Scenarios</button><button data-t="inc">Incident and prevention</button>
-<button data-t="chk">Checks</button><button data-t="stat">Statistics</button><button data-t="smp">Samples</button>
-<button data-t="his">Run history</button><button data-t="std">Standards</button><button data-t="abt">About</button></nav>
+<button data-t="dash" class="on">Dashboard</button><button data-t="tst">Test cases</button><button data-t="log">Simulation logs</button>
+<button data-t="scn">Scenarios</button><button data-t="inc">Incident and prevention</button><button data-t="chk">Checks</button>
+<button data-t="stat">Statistics</button><button data-t="smp">Samples</button><button data-t="his">Run history</button>
+<button data-t="std">Standards</button><button data-t="abt">About</button></nav>
 <main>
 
-<section class="tab on" id="t_dash"><div class="dash">
+<section class="tab on" id="t_dash">
  <div class="ctl">
   <div class="card"><h2>Parameters (defaults = parameter file)</h2>
    <div id="form" class="row"></div>
    <label class="chk"><input type="checkbox" id="limiter" checked> Current limiter active</label>
    <label class="chk"><input type="checkbox" id="protect" checked> Protection and BMS active (prevention)</label>
   </div>
-  <div class="card"><h2>Scenario and run</h2>
-   <label>Scenario (applied on top of the values above)</label>
+  <div class="card"><h2>Scenario or test case and run</h2>
+   <label>Scenario or test case (applied on top of the values above)</label>
    <select id="scn"></select>
    <label>Playback</label>
    <select id="spd"><option value="3" selected>Fast - 3 s</option><option value="30">30 s</option><option value="60">1 min</option></select>
-   <div class="btns" style="margin-top:8px"><button class="p" id="run">Run</button><button id="cmp">Compare OFF / ON</button>
+   <div class="btns" style="margin-top:6px"><button class="p" id="run">Run</button><button id="cmp">Compare OFF / ON</button>
    <button id="apply">Apply scenario</button><button id="reset">Reset to defaults</button></div>
-   <div class="bar" style="margin-top:8px"><div id="prog"></div></div><small id="ptxt" class="mut">Ready</small>
+   <div class="bar" style="margin-top:6px"><div id="prog"></div></div><small id="ptxt" class="mut">Ready</small>
   </div>
   <div class="card"><h2>Change a value and compare</h2>
    <label>Parameter to change</label><select id="swP"></select>
    <div class="row"><div><label>From (display units)</label><input id="swFrom" type="number" step="any"></div>
    <div><label>To (display units)</label><input id="swTo" type="number" step="any"></div></div>
    <label>Number of values (2 to 8)</label><input id="swN" type="number" min="2" max="8" value="5">
-   <div class="btns" style="margin-top:8px"><button class="g" id="swRun">Run change</button><button id="swClr">Clear</button></div>
-   <small id="swMsg" class="mut">Other values come from the form and the scenario above. Only the chosen value changes between runs.</small>
+   <div class="btns" style="margin-top:6px"><button class="g" id="swRun">Run change</button><button id="swClr">Clear</button></div>
+   <small id="swMsg" class="mut">Only the chosen value changes between runs.</small>
   </div>
-  <div class="card" id="scenCard"><h2>Scenario</h2><div class="mut">Choose a scenario and press Run.</div></div>
+  <div class="card" id="scenCard"><h2>Scenario</h2><div class="mut">Choose a scenario or test case and press Run.</div></div>
  </div>
  <div class="rt">
   <div class="kpis" id="kpis"></div>
   <div class="legend" id="legend"></div>
   <div class="charts" id="charts"></div>
-  <div class="card" id="sweepBox" style="display:none"><h2>Sweep results</h2>
+  <div class="card sweep" id="sweepBox" style="display:none"><h2>Sweep results</h2>
    <div class="scroll"><table id="swTbl"></table></div></div>
  </div>
-</div></section>
+</section>
+
+<section class="tab" id="t_tst">
+ <div class="card"><h2>Industry test cases</h2>
+  <div class="btns"><button class="p" id="tstRun" style="flex:0 0 auto">Run all test cases</button></div>
+  <small id="tstSum" class="mut">Runs every test from the parameter-file defaults with protection ON, then compares the outcome with the expected result. These are engineering checks against the reduced model, not a certification.</small>
+ </div>
+ <div class="card"><div class="scroll"><table id="tstTbl"><tr><td class="mut">Press Run all test cases.</td></tr></table></div></div>
+</section>
+
+<section class="tab" id="t_log">
+ <div class="card"><h2>Simulation logs and replay</h2>
+  <div class="row">
+   <div><label>Saved MATLAB run</label><select id="logPick"><option value="">-- choose a run --</option></select></div>
+   <div><label>Log file</label><select id="logFile"><option value="cmd">Command log (10_Command_Log.txt)</option><option value="sim">Simulation log (11_Simulation_Log.txt)</option><option value="sys">System identification report</option></select></div>
+  </div>
+  <div class="btns" style="margin-top:6px"><button class="g" id="replay">Replay run data on dashboard</button><button id="logRefresh">Refresh list</button></div>
+  <small id="logMsg" class="mut"></small>
+ </div>
+ <div class="card" id="logInfo"><span class="mut">Choose a run to see its information.</span></div>
+ <div class="card" style="flex:1;min-height:0;display:flex;flex-direction:column"><h2 id="logTitle">Log</h2><pre id="logTxt" class="logbox">Choose a run.</pre></div>
+</section>
 
 <section class="tab" id="t_scn"><div class="card"><h2>All fault scenarios - protection OFF and ON</h2>
  <div class="scroll"><table id="scnTbl"></table></div></div></section>
@@ -114,9 +149,6 @@ ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:4px 0}
  <div class="scroll"><table><thead id="smh"></thead><tbody id="smb"></tbody></table></div></div></section>
 
 <section class="tab" id="t_his">
- <div class="card"><h2>Choose a saved run</h2>
-  <select id="runPick"><option value="">-- choose a run --</option></select>
-  <small class="mut">Runs saved from the website and from MATLAB (push_to_website.m). Sweep runs are not saved one by one.</small></div>
  <div class="card"><h2>Run history (server)</h2>
   <div class="scroll"><table><thead><tr><th>ID</th><th>Date / time</th><th>Name</th><th>Settings</th><th>Speed end</th><th>Peak A</th><th>Result</th><th></th></tr></thead>
   <tbody id="hist"></tbody></table></div></div></section>
@@ -129,7 +161,7 @@ ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:4px 0}
 <tr><td class="mut">Design load</td><td>1 kW = 3.18 Nm</td></tr>
 <tr><td class="mut">Pack OCV window</td><td>45.4 V (0 %) - 54.5 V (100 %)</td></tr>
 <tr><td class="mut">Undervoltage cut-off (protection)</td><td>46 V, then derate to 50 % current</td></tr>
-<tr><td class="mut">Motor projected limit</td><td>120 C (derate when protection is on, damage when off)</td></tr>
+<tr><td class="mut">Motor projected limit</td><td>120 C</td></tr>
 <tr><td class="mut">Battery projected limit</td><td>60 C</td></tr>
 <tr><td class="mut">Hardware over-current trip</td><td>0.1 ms above 1.1 x I peak (when limiter is off)</td></tr>
 <tr><td class="mut">Sensor plausibility</td><td>6 % deviation for 20 ms, after 0.1 s</td></tr>
@@ -138,11 +170,11 @@ ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:4px 0}
 
 <section class="tab" id="t_abt"><div class="card"><h2>About this twin</h2><div class="scroll">
 <p><b>Model.</b> A reduced-order replica written from BLDCSpeedControlData.m. It is an engineering estimate for trends and design review, not the Simulink output.</p>
-<p><b>Known limit.</b> The reduced model assumes a converter efficiency of 97 %. The RunAll reference runs show a Pdc/Pbatt ratio of about 1.05 to 1.11, which this model does not reproduce. Use the scenarios and sweeps to compare cases with each other, not to predict absolute numbers.</p>
-<p><b>Sweep.</b> One parameter is changed in equal steps while everything else stays as set in the form and the scenario. Each step is a full run.</p>
-<p><b>Real data.</b> Runs pushed from MATLAB (push_to_website.m) appear in Run history.</p>
+<p><b>Test cases.</b> Each case names an engineering reference (IEC 60034-1, ISO 16750-2, ISO 26262, IEC 62660-1, UN ECE R100, SAE J1634). The case sets one or two conditions and states an expected outcome. The references show what the test is modelled on; they are not certification claims.</p>
+<p><b>Known limit.</b> The reduced model assumes a converter efficiency of 97 %. The RunAll reference runs show a Pdc/Pbatt ratio of about 0.92 to 1.11, which this model does not reproduce.</p>
+<p><b>Simulation logs.</b> Runs exported with export_to_website.m appear in the Simulation logs tab. Replay shows the recorded 1 ms data from the MATLAB run on the dashboard charts. Temperatures are not recorded by the Simulink model, so those curves stay empty during replay.</p>
 </div></div></section>
-</main>
+</main></div>
 
 <div id="toasts"></div>
 <div id="modal"><div class="box"><h2 id="mt"></h2><div id="mb"></div><button class="p" onclick="document.getElementById('modal').style.display='none'">Acknowledge</button></div></div>
@@ -162,40 +194,95 @@ const CH=[
  {t:"Battery current [A]",s:[["ib",0]],h:[]},
  {t:"State of charge [%]",s:[["soc",0]],h:[],sc:100}];
 const KP=[["rpm","Speed","rpm"],["i","Motor current","A"],["tm","Motor temp. (proj.)","C"],["vb","Battery voltage","V"],["soc","State of charge","%"],["pb","Battery power","kW"]];
-const OUTC={"INCIDENT":"FAIL","HIDDEN FAULT":"FAIL","PREVENTED":"PASS","WARNING":"WARN","NORMAL":"PASS"};
+const OUTC={"INCIDENT":"FAIL","HIDDEN FAULT":"FAIL","PREVENTED":"PASS","WARNING":"WARN","NORMAL":"PASS","REPLAY":"PASS","SAVED":"PASS"};
 const API="/api/runs";
-let runs=[],view=[],cur=null,anim=0,shown=0,hover=-1,srv=null,pg=0,lastCmp=null;
+
+/* ---------- industry test cases (expected = design target with protection ON) ---------- */
+const TESTS=[
+{id:"T01",std:"IEC 60034-1 rated duty",name:"Rated operation, 100 % load",p:{},expect:"NORMAL",
+ crit:"Speed within 2 % of target; peak current <= 1.1 x I peak; no protection action",
+ cause:"Rated duty at 3.18 Nm, the reference case.",help:["Reference for every other test case."]},
+{id:"T02",std:"IEC 60034-1 S2 short-time duty",name:"Short overload 150 % load",p:{load:1.5},expect:"WARNING",
+ crit:"Current held at I peak by the limiter; speed loss reported",
+ cause:"Load of 4.8 Nm: the limiter holds the current, so the speed falls.",help:["Warn the driver when current stays above I continuous for more than 1 s."]},
+{id:"T03",std:"SAE J1634 BEV gradeability",name:"Hill climb at 180 % load",p:{load:1.8},expect:"WARNING",
+ crit:"Limiter holds current at I peak; no thermal limit reached",
+ cause:"Sustained hill climb at 5.7 Nm.",help:["Power map: lower the maximum load for steep climbs.","Thermal derate when projected temperature is above limit."]},
+{id:"T04",std:"IEC 60034-1 stall / locked rotor",name:"Stall at 3 x rated load",p:{load:3},expect:"PREVENTED",
+ crit:"Protection acts before the motor projected temperature exceeds 120 C",
+ cause:"Locked-rotor condition at about 9.5 Nm.",help:["Stall detection and drive derate.","Thermal protection on the motor winding."]},
+{id:"T05",std:"ISO 16750-2 driveability",name:"Maximum ramp rate 20000 rpm/s",p:{ramp:20000},expect:"WARNING",
+ crit:"Ramp needs more current than I continuous; reported as a warning, not a failure",
+ cause:"Acceleration beyond the design ramp of 13000 rpm/s.",help:["Limit the ramp in the controller to the design value.","Report the current demand during the ramp."]},
+{id:"T06",std:"IEC 60034-1 low-speed operation",name:"Creep speed 500 rpm, no load",p:{rpmRef:500,load:0},expect:"NORMAL",
+ crit:"Speed within 2 % of 500 rpm; no current above I continuous",
+ cause:"Low-speed controllability with no external load.",help:["Check PI tracking at low speed."]},
+{id:"T07",std:"IEC 60034-1 speed window",name:"Over-speed reference 3100 rpm",p:{rpmRef:3100},expect:"WARNING",
+ crit:"Final speed reported outside the 2900-3000 rpm window",
+ cause:"Reference set above the design window.",help:["Software speed limit at 3000 rpm.","Over-speed alarm to the driver."]},
+{id:"T08",std:"ISO 16750-2 undervoltage",name:"Cold start at 8 % SOC",p:{soc0:0.08},expect:"PREVENTED",
+ crit:"Undervoltage cut-off at 46 V acts; minimum voltage reported",
+ cause:"Pack near the 45.4 V minimum at the start of the run.",help:["Undervoltage cut-off at 46 V with derate.","Limp-home mode at low power."]},
+{id:"T09",std:"IEC 62660-1 power test",name:"Pack resistance x2 (end of life)",p:{rFac:2},expect:"WARNING",
+ crit:"Pack voltage sag reported; no protection action needed",
+ cause:"Internal resistance doubled by ageing.",help:["Track pack resistance against its new value.","Alarm at twice the new resistance."]},
+{id:"T10",std:"UN ECE R100 thermal safety",name:"Pack resistance x3, thermal guard",p:{rFac:3},expect:"PREVENTED",
+ crit:"Battery projected temperature stays below 60 C, or derate acts before it",
+ cause:"Heating in the pack from high internal resistance.",help:["Battery over-temperature derate.","Service: check busbars and connectors."]},
+{id:"T11",std:"IEC 62660-1 capacity retention",name:"Capacity fade to 40 Ah (80 %)",p:{packAh:40},expect:"NORMAL",
+ crit:"Run completes; SOC drop larger than the 50 Ah case; no protection action",
+ cause:"End-of-life capacity of 80 % of rated.",help:["Update the range estimate from measured capacity."]},
+{id:"T12",std:"IEC 60034-1 Kt tolerance",name:"Magnet strength -20 %",p:{ktFac:0.8},expect:"WARNING",
+ crit:"Torque-per-amp check reports the Kt deviation",
+ cause:"Demagnetised magnets reduce torque per amp.",help:["Torque-per-amp monitor with 10 % alarm.","Service: magnet check."]},
+{id:"T13",std:"ISO 26262 plausibility",name:"Speed sensor +5 % (below threshold)",p:{sensOff:0.05},expect:"HIDDEN FAULT",
+ crit:"Deviation of 5 % is below the 6 % plausibility threshold, so the fault stays hidden",
+ cause:"Small sensor drift that the current plausibility check does not catch.",help:["Tighten the plausibility threshold, or add a second sensor check.","Log drift trends from the Black Box."]},
+{id:"T14",std:"ISO 26262 fault injection",name:"Current limiter failure",p:{limiter:false},expect:"PREVENTED",
+ crit:"Hardware over-current trip acts within 0.1 ms",
+ cause:"Software limiter removed: only the hardware trip protects the drive.",help:["Hardware over-current trip.","Start-up self-test of the limiter."]},
+{id:"T15",std:"IEC 61508 combined faults",name:"Pack x3 plus overload 1.8",p:{rFac:3,load:1.8},expect:"PREVENTED",
+ crit:"Both protections act; no incident",
+ cause:"Two faults at once: the realistic worst case on a hill.",help:["Battery derate and motor current limit together.","Do not drive on until the pack is inspected."]}
+];
+const NF=E.SCEN.length;
+const ALL=()=>E.SCEN.concat(TESTS);
+const sel=()=>ALL()[+$("#scn").value];
+let view=[],cur=null,anim=0,shown=0,hover=-1,srv=null,pg=0,lastCmp=null,runs=[],LOGIDX=[];
 const ent=(r,color,label)=>({r,color,label});
 
 /* ---------- build the page ---------- */
 $("#form").innerHTML=FIELDS.map(([k,l,u])=>`<div><label>${l} [${u}]</label><input id="in_${k}" type="number" step="any"></div>`).join("");
 $("#swP").innerHTML=FIELDS.map(([k,l,u],i)=>`<option value="${i}">${l} [${u}]</option>`).join("");
-$("#scn").innerHTML=E.SCEN.map((s,i)=>`<option value="${i}">${s.name}</option>`).join("");
+$("#scn").innerHTML='<optgroup label="Fault scenarios (design review)">'+E.SCEN.map((s,i)=>`<option value="${i}">${s.name}</option>`).join("")+'</optgroup>'+
+ '<optgroup label="Industry test cases">'+TESTS.map((t,i)=>`<option value="${NF+i}">${t.id}  ${t.name}</option>`).join("")+'</optgroup>';
 $("#kpis").innerHTML=KP.map(([k,l,u])=>`<div class="kpi"><i>${l}</i><br><b id="k_${k}">-</b> <i>${u}</i></div>`).join("");
 $("#charts").innerHTML=CH.map((c,n)=>`<div class="ch"><h3>${c.t}</h3><div class="cw"><canvas id="c${n}"></canvas></div><small id="v${n}" class="mut"></small></div>`).join("");
 
 function read(){const p={};FIELDS.forEach(([k,,,s])=>p[k]=(+$("#in_"+k).value)/s);p.limiter=$("#limiter").checked;p.protect=$("#protect").checked;return p}
 function fill(p){FIELDS.forEach(([k,,,s])=>$("#in_"+k).value=+(p[k]*s).toFixed(6));$("#limiter").checked=!!p.limiter;$("#protect").checked=!!p.protect}
-function mkRun(p,sc){const r=E.simulate(p);r.chk=E.checks(r);r.scnId=sc?sc.id:"";r.scnName=sc?sc.name:"Custom run";r.cause=sc?sc.cause:"";r.help=sc?sc.help:[];return r}
+function mkRun(p,sc){const r=E.simulate(p);r.chk=E.checks(r);
+ r.scnId=sc?sc.id:"";r.scnName=sc?sc.name:"Custom run";r.cause=sc?sc.cause:"";r.help=sc?sc.help:[];
+ r.std=sc&&sc.std?sc.std:"";r.crit=sc&&sc.crit?sc.crit:"";r.expect=sc&&sc.expect?sc.expect:"";return r}
 function setStatus(o){const s=$("#status");s.textContent=o;s.className="pill "+(OUTC[o]||"idle")}
 function outBadge(o){return `<span class="pill ${OUTC[o]||"idle"}">${o}</span>`}
 function toast(m,k){const e=document.createElement("div");e.className="toast "+(k||"");e.textContent=m;$("#toasts").appendChild(e);setTimeout(()=>e.remove(),7000)}
 function popup(kind,title,items){const m=$("#modal");m.className=kind==="warn"?"w":"";m.style.display="flex";$("#mt").textContent=title;$("#mb").innerHTML="<ul>"+items.map(x=>"<li>"+x+"</li>").join("")+"</ul>"}
 
-/* ---------- charts: draw every entry in view[] ---------- */
+/* ---------- charts: every entry in view[] ---------- */
 function drawChart(n,u){
  const c=CH[n],cv=$("#c"+n),dp=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;
  cv.width=W*dp;cv.height=H*dp;const x=cv.getContext("2d");x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,W,H);
- const L=50,R=8,T=8,B=18,sc=c.sc||1;let lo=1e99,hi=-1e99;
+ const L=46,R=8,T=6,B=16,sc=c.sc||1;let lo=1e99,hi=-1e99;
  view.forEach(v=>c.s.forEach(([k])=>v.r.d[k].forEach(y=>{if(isFinite(y)){lo=Math.min(lo,y*sc);hi=Math.max(hi,y*sc)}})));
  c.h.forEach(([y])=>{lo=Math.min(lo,y);hi=Math.max(hi,y)});
  if(!isFinite(lo)||lo>hi){lo=0;hi=1}if(hi-lo<1e-9){hi+=1;lo-=1}
  const pd=(hi-lo)*.08;lo-=pd;hi+=pd;
  const tm=view.length?view[0].r.t[view[0].r.t.length-1]:0.3;
  const X=t=>L+t/tm*(W-L-R),Y=y=>T+(hi-y)/(hi-lo)*(H-T-B);
- x.font="11px system-ui";x.strokeStyle="#243049";x.fillStyle="#8b97b3";x.lineWidth=1;
+ x.font="10px system-ui";x.strokeStyle="#243049";x.fillStyle="#8b97b3";x.lineWidth=1;
  for(let g=0;g<=4;g++){const v=lo+(hi-lo)*g/4,y=Y(v);x.beginPath();x.moveTo(L,y);x.lineTo(W-R,y);x.stroke();x.fillText(v.toFixed(Math.abs(hi-lo)<1?3:Math.abs(hi-lo)<10?2:0),2,y+4)}
- for(let g=0;g<=5;g++){const t=tm*g/5;x.fillText(t.toFixed(2)+"s",Math.min(X(t),W-30),H-4)}
+ for(let g=0;g<=5;g++){const t=tm*g/5;x.fillText(t.toFixed(2)+"s",Math.min(X(t),W-28),H-3)}
  c.h.forEach(([y,col])=>{if(y<lo||y>hi)return;x.strokeStyle=col;x.setLineDash([5,4]);x.beginPath();x.moveTo(L,Y(y));x.lineTo(W-R,Y(y));x.stroke();x.setLineDash([])});
  view.forEach(v=>c.s.forEach(([k,dash])=>{
   const d=v.r.d[k],tt=v.r.t;x.strokeStyle=v.color;x.lineWidth=2;x.setLineDash(dash?[4,3]:[]);x.beginPath();let on=0;
@@ -204,11 +291,11 @@ function drawChart(n,u){
  if(hover>=0&&hover<=u&&view.length){x.strokeStyle="#fff6";x.lineWidth=1;x.beginPath();const xx=X(view[0].r.t[hover]);x.moveTo(xx,T);x.lineTo(xx,H-B);x.stroke()}
  const j=hover>=0?Math.min(hover,u):u;
  $("#v"+n).innerHTML=view.map(v=>c.s.map(([k])=>{const arr=v.r.d[k],y=arr[Math.min(j,arr.length-1)];
-   return isFinite(y)?`<span style="color:${v.color}">${v.label.split(" = ")[0].slice(0,18)} ${k} ${f(y*sc,Math.abs(y*sc)>100?0:2)}</span>`:""}).join(" ")).join(" | ");
+   return isFinite(y)?`<span style="color:${v.color}">${k} ${f(y*sc,Math.abs(y*sc)>100?0:2)}</span>`:""}).join(" ")).join(" | ");
 }
 CH.forEach((_,n)=>{const cv=$("#c"+n);
  cv.onmousemove=e=>{if(!view.length)return;const r=cv.getBoundingClientRect(),N=view[0].r.t.length;
-  hover=Math.max(0,Math.min(N-1,Math.round((e.clientX-r.left-50)/(r.width-58)*(N-1))));frame(shown)};
+  hover=Math.max(0,Math.min(N-1,Math.round((e.clientX-r.left-46)/(r.width-54)*(N-1))));frame(shown)};
  cv.onmouseleave=()=>{hover=-1;frame(shown)}});
 
 function renderLegend(){$("#legend").innerHTML=view.map(v=>`<span><span class="sw" style="background:${v.color}"></span>${v.label}</span>`).join("")}
@@ -218,10 +305,10 @@ function frame(u){
  const v={rpm:f(d.rpm[j],0),i:f(d.i[j]),tm:f(d.tm[j],0),vb:f(d.vb[j],2),soc:f(d.soc[j]*100,2),pb:f(d.vb[j]*d.ib[j]/1000,2)};
  KP.forEach(([k])=>$("#k_"+k).textContent=v[k]);
  $("#prog").style.width=(r.t.length>1?j/(r.t.length-1)*100:0)+"%";
- $("#ptxt").textContent="Sim "+f(r.t[j],3)+" s of "+f(r.t[r.t.length-1],3)+" s"+(view.length>1?" (first curve shown in the boxes)":"");
+ $("#ptxt").textContent="Sim "+f(r.t[j],3)+" s of "+f(r.t[r.t.length-1],3)+" s"+(view.length>1?" (first curve in the boxes)":"");
 }
 
-/* ---------- playback: plays all entries together ---------- */
+/* ---------- playback ---------- */
 function play(list,after){
  cancelAnimationFrame(anim);view=list;cur=list[0].r;hover=-1;setStatus("RUNNING");
  const N=cur.t.length,dur=+$("#spd").value,t0=performance.now();
@@ -232,10 +319,10 @@ function play(list,after){
 }
 
 /* ---------- single run, compare, sweep ---------- */
-$("#run").onclick=()=>{const sc=E.SCEN[+$("#scn").value];const r=mkRun(Object.assign({},read(),sc.p),sc);lastCmp=null;
+$("#run").onclick=()=>{const sc=sel();const r=mkRun(Object.assign({},read(),sc.p),sc);lastCmp=null;
  play([ent(r,PAL[0],r.scnName)],()=>finishSingle(r))};
 
-$("#cmp").onclick=()=>{const sc=E.SCEN[+$("#scn").value],base=Object.assign({},read(),sc.p);
+$("#cmp").onclick=()=>{const sc=sel(),base=Object.assign({},read(),sc.p);
  const off=mkRun(Object.assign({},base,{protect:false}),sc),on=mkRun(Object.assign({},base,{protect:true}),sc);
  off.scnName=sc.name+" - protection OFF";on.scnName=sc.name+" - protection ON";
  lastCmp={id:sc.id,off,on};
@@ -245,16 +332,14 @@ $("#swRun").onclick=()=>{
  const k=+$("#swP").value,[key,label,unit,scale]=FIELDS[k];
  const a=+$("#swFrom").value,b=+$("#swTo").value,n=Math.min(8,Math.max(2,Math.round(+$("#swN").value)));
  if(!isFinite(a)||!isFinite(b)||a===b){$("#swMsg").textContent="From and To must be different numbers.";return}
- const sc=E.SCEN[+$("#scn").value],base=Object.assign({},read(),sc.p);
- const list=[];
+ const sc=sel(),base=Object.assign({},read(),sc.p),list=[];
  for(let q=0;q<n;q++){
   const v=a+(b-a)*q/(n-1),p=Object.assign({},base);p[key]=v/scale;
-  const r=mkRun(p,sc),lab=`${label} = ${+v.toFixed(4)} ${unit}`;
-  list.push(ent(r,PAL[q%PAL.length],lab));
+  list.push(ent(mkRun(p,sc),PAL[q%PAL.length],`${label} = ${+v.toFixed(4)} ${unit}`));
  }
  $("#swMsg").textContent="Running "+n+" simulations ...";
  $("#sweepBox").style.display="block";
- play(list,()=>{renderSweep(list);$("#swMsg").textContent=n+" runs done. Each value has its own curve and row in the table."});
+ play(list,()=>{renderSweep(list);$("#swMsg").textContent=n+" runs done."});
 };
 $("#swClr").onclick=()=>{view=[];cur=null;$("#sweepBox").style.display="none";$("#swMsg").textContent="Cleared.";frame(0)};
 
@@ -273,25 +358,87 @@ function finishSingle(r){
  save(r);
 }
 
-$("#apply").onclick=()=>{const sc=E.SCEN[+$("#scn").value];fill(Object.assign({},E.DEF,sc.p,{protect:$("#protect").checked}));toast("Scenario values written into the form: "+sc.name)};
+$("#apply").onclick=()=>{const sc=sel();fill(Object.assign({},E.DEF,sc.p,{protect:$("#protect").checked}));toast("Values written into the form: "+sc.name)};
 $("#reset").onclick=()=>{fill(E.DEF);$("#scn").value=0;lastCmp=null;setStatus("READY");toast("Defaults restored (parameter file values)","good")};
+
+/* ---------- industry test cases ---------- */
+function renderSuite(){
+ const rows=TESTS.map((t,i)=>{const r=E.simulate(Object.assign({},E.DEF,t.p,{protect:true}));return {t,r,i,ok:r.outcome===t.expect}});
+ const pass=rows.filter(x=>x.ok).length;
+ $("#tstTbl").innerHTML="<tr><th>ID</th><th>Reference</th><th>Test case</th><th>Pass criteria</th><th>Expected</th><th>Actual</th><th>Peak I [A]</th><th>Min V [V]</th><th>Motor max [C]</th><th>Result</th><th></th></tr>"+
+  rows.map(x=>{const s=x.r.sum;return `<tr><td>${x.t.id}</td><td class="mut">${x.t.std}</td><td>${x.t.name}</td><td class="mut">${x.t.crit}</td><td>${outBadge(x.t.expect)}</td><td>${outBadge(x.r.outcome)}</td><td>${f(s.Ipk,1)}</td><td>${f(s.Vmin,2)}</td><td>${f(s.Tmax,0)}</td><td><span class="pill ${x.ok?"MATCH":"MISMATCH"}">${x.ok?"MATCH":"MISMATCH"}</span></td><td><button onclick="openTest(${x.i})">Open</button></td></tr>`}).join("");
+ $("#tstSum").textContent=`${pass} of ${TESTS.length} test cases gave the expected outcome. A MISMATCH is a finding: either the design or the expected outcome needs review.`;
+}
+function openTest(i){$("#scn").value=NF+i;document.querySelector('[data-t="dash"]').click();$("#run").click()}
+window.openTest=openTest;
+$("#tstRun").onclick=renderSuite;
+
+/* ---------- simulation logs and replay ---------- */
+async function loadIndex(){
+ try{const j=await(await fetch("data/runs/index.json",{cache:"no-store"})).json();LOGIDX=Array.isArray(j)?j:[]}catch(e){LOGIDX=[]}
+ const prev=$("#logPick").value;
+ $("#logPick").innerHTML='<option value="">-- choose a run --</option>'+LOGIDX.map((m,i)=>`<option value="${i}">${m.date} | ${m.id} | ${m.result}</option>`).join("");
+ $("#logPick").value=prev;
+ $("#logMsg").textContent=LOGIDX.length?LOGIDX.length+" run(s) found in data/runs/.":"No runs exported yet. Run export_to_website in MATLAB, then push the website folder to GitHub.";
+}
+async function showLog(){
+ const m=LOGIDX[+$("#logPick").value];
+ if(!m){$("#logInfo").innerHTML='<span class="mut">Choose a run to see its information.</span>';$("#logTxt").textContent="Choose a run.";return}
+ $("#logInfo").innerHTML=`<h2>Run information</h2><table><tr><td class="mut">Run ID</td><td>${m.id}</td></tr><tr><td class="mut">Date / time</td><td>${m.date}</td></tr><tr><td class="mut">Settings</td><td>${m.settings}</td></tr><tr><td class="mut">Final V&amp;V status</td><td>${outBadge(m.result)}</td></tr></table>`;
+ const key=$("#logFile").value,title={cmd:"Command log",sim:"Simulation log",sys:"System identification report"}[key];
+ $("#logTitle").textContent=title+" - "+m.id;
+ try{$("#logTxt").textContent=await(await fetch("data/runs/"+m.id+"/"+m.files[key],{cache:"no-store"})).text()}
+ catch(e){$("#logTxt").textContent="Could not load "+m.files[key]}
+}
+$("#logPick").onchange=showLog;$("#logFile").onchange=showLog;
+$("#logRefresh").onclick=loadIndex;
+
+async function replayRun(){
+ const m=LOGIDX[+$("#logPick").value];
+ if(!m){toast("Choose a run first","bad");return}
+ try{
+  const txt=await(await fetch("data/runs/"+m.id+"/"+m.files.replay,{cache:"no-store"})).text();
+  const L=txt.trim().split(/\r?\n/),H=L[0].split(",").map(h=>h.trim().replace(/"/g,""));
+  const rows=L.slice(1).map(l=>l.split(",").map(Number));
+  const C=n=>{const k=H.indexOf(n);return rows.map(r=>k<0?NaN:r[k])};
+  const t=C("Time");if(t.length<2)throw Error("no data rows");
+  const nanA=()=>t.map(()=>NaN);
+  const d={rpm:C("RPM"),ref:C("RPMReference"),i:C("MotorCurrent"),T:C("MotorTorque"),vb:C("BatteryVoltage"),ib:C("BatteryCurrent"),
+    soc:C("SOC"),vdc:C("DCLinkVoltage"),ww:C("WheelSpeed"),est:nanA(),tm:nanA(),tb:nanA()};
+  const fin=a=>a.filter(isFinite),last=a=>{const z=fin(a);return z.length?z[z.length-1]:NaN};
+  const r={t,d,p:Object.assign({},E.DEF,{tstop:t[t.length-1]}),scnName:"Replay of "+m.id,id:m.id,std:"MATLAB recorded data",crit:"",expect:"",
+   outcome:"REPLAY",ev:[],help:[],cause:"Recorded 1 ms data from the MATLAB run (EV_DAQ_Clean). The Simulink log has no temperature channel, so those curves stay empty.",
+   sum:{finalRpm:last(d.rpm),refFinal:last(d.ref),Ipk:Math.max(...fin(d.i)),Ifin:last(d.i),Vb:last(d.vb),Ib:last(d.ib),
+        Vmin:Math.min(...fin(d.vb)),SOCdrop:fin(d.soc)[0]-last(d.soc),Tmax:NaN,Tbmax:NaN,Tload:NaN}};
+  r.chk=[{n:"Replay",r:"recorded data, no model run",v:"checks not applicable",s:"SKIP"}];
+  play([ent(r,PAL[0],"recorded: "+m.id)],()=>{showChecks(r);renderStats(r);renderSamples();renderScenCard(r)});
+  setStatus("REPLAY");
+  document.querySelector('[data-t="dash"]').click();
+ }catch(e){toast("Could not load replay data: "+e.message,"bad")}
+}
+$("#replay").onclick=replayRun;
 
 /* ---------- panels ---------- */
 function renderScenCard(r){
- $("#scenCard").innerHTML=`<h2>Scenario</h2><b>${r.scnName}</b><div class="mut" style="margin:4px 0">${r.cause}</div>
- <div>Outcome: ${outBadge(r.outcome)}</div><div class="mut" style="margin-top:6px">Protection: ${r.p.protect?"ON":"OFF"} - limiter: ${r.p.limiter?"ON":"OFF"}</div>
- <h2 style="margin-top:10px">What helps</h2><ul class="h">${r.help.map(h=>`<li>${h}</li>`).join("")}</ul>`;
+ $("#scenCard").innerHTML=`<h2>${r.expect?"Test case":"Scenario"}</h2><b>${r.scnName}</b>
+ ${r.std?`<div class="mut">Reference: ${r.std}</div>`:""}
+ <div class="mut" style="margin:4px 0">${r.cause}</div>
+ ${r.crit?`<div class="mut">Pass criteria: ${r.crit}</div>`:""}
+ ${r.expect?`<div style="margin-top:4px">Expected: ${outBadge(r.expect)}</div>`:""}
+ <div style="margin-top:4px">Outcome: ${outBadge(r.outcome)}</div>
+ <div class="mut" style="margin-top:4px">Protection: ${r.p.protect?"ON":"OFF"} - limiter: ${r.p.limiter?"ON":"OFF"}</div>
+ ${r.help&&r.help.length?`<h2 style="margin-top:8px">What helps</h2><ul class="h">${r.help.map(h=>`<li>${h}</li>`).join("")}</ul>`:""}`;
 }
 function rowCmp(name,x){return `<tr><td>${name}</td><td>${outBadge(x.outcome)}</td><td>peak ${f(x.sum.Ipk,1)} A</td><td>min V ${f(x.sum.Vmin,2)}</td><td>motor ${f(x.sum.Tmax,0)} C</td><td>speed ${f(x.sum.finalRpm,0)} rpm</td></tr>`}
 function renderIncident(r){
  const ev=r.ev.length?r.ev.map(e=>`<tr><td>${f(e.t,3)} s</td><td><span class="pill ${e.kind==="fail"?"FAIL":e.kind==="act"?"PASS":"WARN"}">${e.kind==="fail"?"FAIL":e.kind==="act"?"ACTION":"WARN"}</span></td><td>${e.msg}</td></tr>`).join(""):
   `<tr><td colspan="3" class="mut">No events: every monitored limit held.</td></tr>`;
- const cmp=lastCmp&&lastCmp.id===r.scnId?`<h2 style="margin-top:12px">Protection OFF vs ON</h2><table>${rowCmp("Protection OFF",lastCmp.off)}${rowCmp("Protection ON",lastCmp.on)}</table>`:"";
+ const cmp=lastCmp&&lastCmp.id===r.scnId?`<h2 style="margin-top:10px">Protection OFF vs ON</h2><table>${rowCmp("Protection OFF",lastCmp.off)}${rowCmp("Protection ON",lastCmp.on)}</table>`:"";
  $("#incBox").innerHTML=
   `<h2>What happened - ${r.scnName}</h2><div>${outBadge(r.outcome)} <span class="mut">${r.cause}</span></div>
-   <table style="margin-top:8px"><tr><th>Time</th><th>Type</th><th>Event</th></tr>${ev}</table>`+
-  `<h2 style="margin-top:14px">Calculation at the end of the run</h2><div class="calc">${E.explain(r).map(l=>`<div>${l}</div>`).join("")}</div>`+
-  `<h2 style="margin-top:14px">What helps (prevention and service)</h2><ul class="h">${r.help.map(h=>`<li>${h}</li>`).join("")}</ul>${cmp}`;
+   <table style="margin-top:6px"><tr><th>Time</th><th>Type</th><th>Event</th></tr>${ev}</table>`+
+  `<h2 style="margin-top:12px">Calculation at the end of the run</h2><div class="calc">${E.explain(r).map(l=>`<div>${l}</div>`).join("")}</div>`+
+  `<h2 style="margin-top:12px">What helps (prevention and service)</h2><ul class="h">${r.help.map(h=>`<li>${h}</li>`).join("")}</ul>${cmp}`;
 }
 function showChecks(r){
  $("#chkTbl").innerHTML="<tr><th>Check</th><th>Rule</th><th>Value</th><th>Result</th></tr>"+
@@ -307,8 +454,7 @@ function renderStats(r){
  <tr><td class="mut">Peak projected motor temperature</td><td>${f(s.Tmax,0)} C</td></tr>
  <tr><td class="mut">Peak projected battery temperature</td><td>${f(s.Tbmax,0)} C</td></tr>
  <tr><td class="mut">SOC used</td><td>${f(s.SOCdrop*100,4)} %</td></tr>
- <tr><td class="mut">Events logged</td><td>${r.ev.length}</td></tr>
- <tr><td class="mut">Derate / trip / sensor fallback</td><td>${s.derate?"yes":"no"} / ${s.trip?"yes":"no"} / ${s.fb?"yes":"no"}</td></tr></table>`;
+ <tr><td class="mut">Events logged</td><td>${r.ev.length}</td></tr></table>`;
 }
 function renderSamples(){
  if(!cur){$("#smb").innerHTML="";return}
@@ -329,43 +475,29 @@ function scan(){
  $("#scnTbl").innerHTML="<tr><th>Scenario</th><th>Protection OFF</th><th>Protection ON</th></tr>"+rows;
 }
 
-/* ---------- server history and run picker ---------- */
+/* ---------- server history ---------- */
 async function save(r){
  try{
   const res=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({source:"web",name:r.scnName,p:r.p,t:r.t,d:r.d})});
   const j=await res.json();if(!res.ok)throw Error(j.error);r.sid=j.id;
- }catch(e){toast("Server save failed: run kept in this browser only","bad")}
+ }catch(e){toast("Server save not available: run kept in this browser only","bad")}
  refresh();
 }
 async function refresh(){try{const j=await(await fetch(API)).json();srv=Array.isArray(j)?j:null}catch(e){srv=null}hist()}
 function hist(){
  const L=srv||runs.map(r=>({id:r.id,ts:r.ts,name:r.scnName,setup:"",finalRpm:r.sum.finalRpm,peak:r.sum.Ipk,result:r.outcome,local:true}));
- $("#hist").innerHTML=L.map(m=>`<tr><td>${m.id}</td><td>${m.ts?new Date(m.ts).toLocaleString():""}</td><td>${m.name||""}</td><td class="mut">${m.setup||""}</td><td>${f(m.finalRpm,0)}</td><td>${f(m.peak)}</td><td>${m.result||""}</td><td>${m.local?"":`<button onclick="loadRun('${m.id}')">View</button>`}</td></tr>`).join("")||
+ $("#hist").innerHTML=L.map(m=>`<tr><td>${m.id}</td><td>${m.ts?new Date(m.ts).toLocaleString():""}</td><td>${m.name||""}</td><td class="mut">${m.setup||""}</td><td>${f(m.finalRpm,0)}</td><td>${f(m.peak)}</td><td>${m.result||""}</td><td></td></tr>`).join("")||
   `<tr><td colspan="8" class="mut">No runs yet.</td></tr>`;
- $("#runPick").innerHTML='<option value="">-- choose a run --</option>'+L.filter(m=>!m.local).map(m=>
-  `<option value="${m.id}">${m.ts?new Date(m.ts).toLocaleString():""} | ${m.name||"run"} | ${m.setup||""} | ${m.result||""}</option>`).join("");
 }
-$("#runPick").onchange=e=>{if(e.target.value)loadRun(e.target.value)};
-async function loadRun(id){
- try{
-  const j=await(await fetch(API+"?id="+encodeURIComponent(id))).json();
-  const d={};E.KEYS.forEach(k=>d[k]=(j.d[k]||[]).map(v=>v==null?NaN:v));
-  const fin=a=>a.filter(isFinite);
-  const r={t:j.t,d,p:j.p,scnName:j.name||"saved run",id:j.id,outcome:"SAVED",ev:[],help:[],cause:"Saved run loaded from the server.",
-   sum:{finalRpm:d.rpm.at(-1),refFinal:d.ref.at(-1),Ipk:Math.max(...fin(d.i)),Vmin:Math.min(...fin(d.vb)),Tmax:Math.max(...fin(d.tm)),
-        Tbmax:Math.max(...fin(d.tb)),SOCdrop:d.soc[0]-d.soc.at(-1),Ifin:d.i.at(-1)}};
-  r.chk=E.checks(r);cur=r;
-  play([ent(r,PAL[0],"saved: "+r.scnName)],()=>{showChecks(r);renderStats(r);renderSamples()});
-  document.querySelector('[data-t="dash"]').click();
- }catch(e){toast("Could not load run","bad")}
-}
-window.loadRun=loadRun;
 
 /* ---------- navigation and start ---------- */
 $("#nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;
  document.querySelectorAll("#nav button").forEach(x=>x.classList.toggle("on",x===b));
  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.id==="t_"+b.dataset.t));
- if(b.dataset.t==="dash")requestAnimationFrame(()=>frame(shown))};
+ if(b.dataset.t==="dash")requestAnimationFrame(()=>frame(shown));
+ if(b.dataset.t==="log")loadIndex();
+ if(b.dataset.t==="tst"&&!$("#tstTbl").dataset.done){renderSuite();$("#tstTbl").dataset.done=1}
+};
 addEventListener("resize",()=>frame(shown));
 fill(E.DEF);frame(0);scan();refresh();setInterval(refresh,15000);
 </script></body></html>

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "EV_RUN_20261019_173928",
+    "date": "19-Oct-2026 17:39:28",
+    "settings": "stop 0.5 s, 501 samples",
+    "result": "FAIL",
+    "files": {
+      "cmd": "10_Command_Log.txt",
+      "sim": "11_Simulation_Log.txt",
+      "sys": "EV_BlackBox_SysID_Report.txt",
+      "replay": "replay.csv"
+    }
+  }
+]
