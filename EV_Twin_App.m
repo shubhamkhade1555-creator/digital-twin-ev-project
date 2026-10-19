@@ -58,10 +58,33 @@ tTL  = uitab(tg,'Title','Incident timeline');
 tCA  = uitab(tg,'Title','Calculation');
 tPR  = uitab(tg,'Title','Prevention and help');
 tCM  = uitab(tg,'Title','Protection OFF vs ON');
+tRL  = uitab(tg,'Title','Run logs');
 taTL = uitextarea(uigridlayout(tTL,[1 1]),'Editable','off','FontName','Consolas');
 taCA = uitextarea(uigridlayout(tCA,[1 1]),'Editable','off','FontName','Consolas');
 taPR = uitextarea(uigridlayout(tPR,[1 1]),'Editable','off');
 taCM = uitextarea(uigridlayout(tCM,[1 1]),'Editable','off','FontName','Consolas');
+
+% Run logs UI
+gRL  = uigridlayout(tRL,[2 2],'RowHeight',{32,'1x'},'ColumnWidth',{'1.1x','1x'},'Padding',6,'RowSpacing',6,'ColumnSpacing',6);
+ddRun = uidropdown(gRL,'Items',{'Choose a run...'},'ValueChangedFcn',@onPickRun);
+ddRun.Layout.Row = 1; ddRun.Layout.Column = 1;
+btnRef = uibutton(gRL,'Text','Refresh list','ButtonPushedFcn',@(~,~) refreshRunList(ddRun, pwd));
+btnRef.Layout.Row = 1; btnRef.Layout.Column = 2;
+taLog = uitextarea(gRL,'Editable','off','FontName','Consolas');
+taLog.Layout.Row = 2; taLog.Layout.Column = 1;
+
+gAxRL = uigridlayout(gRL,[2 2],'RowHeight',{'1x','1x'},'ColumnWidth',{'1x','1x'},'Padding',0,'RowSpacing',4,'ColumnSpacing',4);
+gAxRL.Layout.Row = 2; gAxRL.Layout.Column = 2;
+axRL  = gobjects(1,4);
+colTitles = {'RPM','MotorCurrent','BatteryVoltage','BatteryCurrent'};
+for iax = 1:4
+    axRL(iax) = uiaxes(gAxRL);
+    axRL(iax).Layout.Row = ceil(iax/2); axRL(iax).Layout.Column = mod(iax-1,2)+1;
+    title(axRL(iax), colTitles{iax}); grid(axRL(iax),'on'); box(axRL(iax),'on'); xlabel(axRL(iax),'Time [s]');
+end
+
+refreshRunList(ddRun, pwd);
+tg.SelectionChangedFcn = @onTabChanged;
 
 %% ---------------- nested callbacks ----------------
     function p = readP()
@@ -160,6 +183,21 @@ taCM = uitextarea(uigridlayout(tCM,[1 1]),'Editable','off','FontName','Consolas'
         yline(ax(4), 60, '--', '60 C');
         legend(ax(1),'show','Location','southeast');
         legend(ax(4),'show','Location','northwest');
+    end
+
+    function onTabChanged(~, event)
+        if strcmp(event.NewValue.Title, 'Run logs')
+            refreshRunList(ddRun, pwd);
+            if ~isempty(ddRun.Value)
+                showRunLog(ddRun.Value, taLog, axRL);
+            end
+        end
+    end
+
+    function onPickRun(~,~)
+        if ~isempty(ddRun.Value)
+            showRunLog(ddRun.Value, taLog, axRL);
+        end
     end
 
     if nargout > 0
@@ -445,4 +483,49 @@ end
 
 function s = yn(x)
 if x, s = 'yes'; else, s = 'no'; end
+end
+
+function refreshRunList(ddown, root)
+d = dir(fullfile(root,'Simulation Logs','EV_RUN_*'));
+d = d([d.isdir]);
+if isempty(d)
+    ddown.Items = {'(no runs yet)'};
+    ddown.ItemsData = {''};
+    return;
+end
+[~,ix] = sort(string({d.name}),'descend');
+d = d(ix);
+items = cell(numel(d),1);
+for kDir = 1:numel(d)
+    tok = regexp(d(kDir).name,'EV_RUN_(\d{8})_(\d{6})','tokens','once');
+    when = d(kDir).name;
+    if ~isempty(tok)
+        when = datestr(datenum([tok{1} tok{2}],'yyyymmddHHMMSS'),'dd-mmm-yyyy HH:MM:SS');
+    end
+    items{kDir} = [when '   |   ' d(kDir).name];
+end
+ddown.Items = items;
+ddown.ItemsData = fullfile(root,'Simulation Logs',{d.name});
+end
+
+function showRunLog(runDir, taLog, axs)
+% command log and cleaned data of one archived run
+if isempty(runDir) || ~isfolder(runDir), return, end
+logF = fullfile(runDir,'10_Command_Log.txt');
+if isfile(logF)
+    taLog.Value = splitlines(fileread(logF));
+else
+    taLog.Value = {'no command log in this run'};
+end
+cF = fullfile(runDir,'03_Cleaned_Data.xlsx');
+if ~isfile(cF), return, end
+try
+    T = readtable(cF,'Sheet','Cleaned_Data');
+    cols = {'RPM','MotorCurrent','BatteryVoltage','BatteryCurrent'};
+    for aAx = 1:4
+        cla(axs(aAx)); plot(axs(aAx), T.Time, T.(cols{aAx}), 'LineWidth',1.2);
+        title(axs(aAx), cols{aAx}, 'Interpreter','none'); grid(axs(aAx),'on'); xlabel(axs(aAx),'Time [s]');
+    end
+catch
+end
 end

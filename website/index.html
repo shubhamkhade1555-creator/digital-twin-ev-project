@@ -3,30 +3,31 @@
 <title>EV Digital Twin - Fault Scenarios</title>
 <style>
 :root{--bg:#0b1020;--card:#131a2e;--card2:#0f1526;--line:#243049;--txt:#e6ebf5;--mut:#8b97b3;--ok:#2ecc8f;--warn:#f5b83d;--bad:#ff5d6c;--acc:#5b9dff;--acc2:#b07cff}
-*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden}
-body{background:var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-#app{display:grid;grid-template-rows:auto auto minmax(0,1fr);height:100vh}
-header{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{display:flex;flex-direction:column;min-height:100vh}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 16px;border-bottom:1px solid var(--line)}
 h1{font-size:17px;margin:0}h1 span{color:var(--acc)}
 nav{display:flex;gap:4px;padding:6px 16px;border-bottom:1px solid var(--line);overflow-x:auto}
-nav button{background:none;border:1px solid transparent;color:var(--mut);padding:6px 12px;white-space:nowrap}
+nav button{background:none;border:1px solid transparent;color:var(--mut);padding:6px 12px;white-space:nowrap;cursor:pointer;font:inherit}
 nav button.on{background:#1b2542;border-color:var(--acc);color:var(--txt)}
-main{padding:10px 16px;min-height:0}
-.tab{display:none;height:100%;min-height:0;flex-direction:column;gap:10px}.tab.on{display:flex}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:0}
-.full{flex:1;display:flex;flex-direction:column}
+main{flex:1;padding:10px 16px}
+.tab{display:none}.tab.on{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
 .card h2{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
-.scroll{overflow:auto;min-height:0;flex:1;display:flex;flex-direction:column;gap:10px}
-.dash{display:grid;grid-template-columns:320px minmax(0,1fr);gap:10px;height:100%;min-height:0}
-.ctl{overflow:auto;display:flex;flex-direction:column;gap:10px}
-.rt{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.scroll{overflow:auto;max-width:100%}
+.dash{display:grid;grid-template-columns:minmax(280px,320px) minmax(0,1fr);gap:10px;align-items:start}
+.ctl{display:flex;flex-direction:column;gap:10px}
+.rt{display:flex;flex-direction:column;gap:10px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
 .kpi b{font-size:19px;font-variant-numeric:tabular-nums}.kpi i{font-style:normal;font-size:11px;color:var(--mut)}
-.charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;min-height:0}
-.ch{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;min-height:0;min-width:0}
-.ch h3{margin:0;font-size:12px;display:flex;justify-content:space-between;gap:6px}.ch h3 small{font-size:11px;white-space:nowrap}
-.cw{position:relative;flex:1;min-height:110px}canvas{position:absolute;inset:0;width:100%;height:100%}
+.charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ch{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px;height:230px;display:flex;flex-direction:column;min-width:0}
+.ch h3{margin:0 0 4px;font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.ch h3 small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw{position:relative;flex:1;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%}
 label{display:block;font-size:11px;color:var(--mut);margin:4px 0 1px}
 label.chk{display:flex;gap:6px;align-items:center;color:var(--txt);font-size:12px;margin:4px 0}label.chk input{width:auto}
 input,select{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);padding:5px 7px;border-radius:7px;font:inherit}
@@ -41,7 +42,7 @@ button:hover{border-color:var(--acc)}button.p{background:linear-gradient(135deg,
 table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:5px 7px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600}
 .mut{color:var(--mut)}
 ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:4px 0}
-.calc div{font:12px/1.55 Consolas,monospace;margin:2px 0}
+.calc div{font:12px/1.55 Consolas,monospace;margin:2px 0;white-space:pre-wrap}
 #toasts{position:fixed;right:16px;bottom:16px;display:grid;gap:8px;z-index:20;max-width:380px}
 .toast{background:#1a223c;border:1px solid var(--line);border-left:4px solid var(--warn);padding:9px 12px;border-radius:9px}
 .toast.bad{border-left-color:var(--bad)}.toast.good{border-left-color:var(--ok)}
@@ -49,7 +50,8 @@ ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:4px 0}
 #modal .box{background:var(--card);border:1px solid var(--bad);border-radius:14px;max-width:620px;width:100%;padding:20px}
 #modal h2{margin:0 0 8px;color:var(--bad);font-size:17px;text-transform:none;letter-spacing:0}
 #modal ul{padding-left:18px}#modal.w .box{border-color:var(--warn)}#modal.w h2{color:var(--warn)}
-@media(max-width:900px){html,body{overflow:auto}#app{height:auto}.dash{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr;grid-template-rows:none}.ch{height:220px}}
+@media(max-width:1100px){.dash{grid-template-columns:1fr}.charts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.charts{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:1fr}}
 </style></head><body>
 <div id="app">
 <header><div><h1>EV <span>Digital Twin</span> - fault scenarios and protection</h1>
@@ -92,6 +94,9 @@ ul.h{margin:4px 0 0 16px;padding:0}ul.h li{margin:4px 0}
  <div class="scroll"><table><thead id="smh"></thead><tbody id="smb"></tbody></table></div></div></section>
 
 <section class="tab" id="t_his"><div class="card full"><h2>Run history (server, includes runs pushed from MATLAB)</h2>
+ <div class="card" style="margin-bottom:10px"><h2>Choose a run</h2>
+  <select id="runPick"><option value="">-- choose a run --</option></select>
+  <div class="mut" style="margin-top:6px" id="runInfo"></div></div>
  <div class="scroll"><table><thead><tr><th>ID</th><th>Date / time</th><th>Scenario</th><th>Speed end</th><th>Peak A</th><th>Result</th><th></th></tr></thead><tbody id="hist"></tbody></table></div></div></section>
 
 <section class="tab" id="t_std"><div class="card full"><h2>Standard characteristics and alarm limits</h2><div class="scroll"><table>
@@ -260,13 +265,15 @@ function renderSamples(){
 $("#pv").onclick=()=>{pg--;renderSamples()};$("#nx").onclick=()=>{pg++;renderSamples()};
 
 function scan(){
+ const head="<tr><th>Scenario</th><th>Protection OFF</th><th>Protection ON</th></tr>";
  const rows=E.SCEN.map(s=>{
   const a=E.simulate(Object.assign({},E.DEF,s.p,{protect:false})),b=E.simulate(Object.assign({},E.DEF,s.p,{protect:true}));
-  const cell=x=>`<td>${outBadge(x.outcome)}<div class="mut">peak ${f(x.sum.Ipk,1)} A, Vmin ${f(x.sum.Vmin,2)} V, motor ${f(x.sum.Tmax,0)} C, speed ${f(x.sum.finalRpm,0)} rpm</div></td>`;
+  const cell=x=>`<td>${outBadge(x.outcome)}<div class="mut">peak ${f(x.sum.Ipk,1)} A · min V ${f(x.sum.Vmin,2)} · motor ${f(x.sum.Tmax,0)} C · speed ${f(x.sum.finalRpm,0)} rpm</div></td>`;
   return `<tr><td><b>${s.name}</b><div class="mut">${s.cause}</div></td>${cell(a)}${cell(b)}</tr>`;
  }).join("");
- $("#scnTbl").innerHTML="<tr><th>Scenario</th><th>Protection OFF</th><th>Protection ON</th></tr>"+rows;
+ $("#scnTbl").innerHTML=head+rows;
 }
+$("#scan").onclick=scan;
 
 /* ---------- server history ---------- */
 async function save(r){
@@ -277,10 +284,18 @@ async function save(r){
  refresh();
 }
 async function refresh(){try{const j=await(await fetch(API)).json();srv=Array.isArray(j)?j:null}catch(e){srv=null}hist()}
+function renderRunPicker(){
+ const L=srv||[];
+ $("#runPick").innerHTML='<option value="">-- choose a run --</option>'+L.map(m=>
+  `<option value="${m.id}">${new Date(m.ts).toLocaleString()} | ${m.name||"run"} | ${m.setup||""} | ${m.result||""}</option>`).join("");
+}
+$("#runPick").onchange=e=>{ if(e.target.value) view(e.target.value); };
+
 function hist(){
  const L=srv||runs.map(r=>({id:r.id,ts:r.ts,name:r.scnName,finalRpm:r.sum.finalRpm,peak:r.sum.Ipk,result:r.outcome,local:true}));
  $("#hist").innerHTML=L.map(m=>`<tr><td>${m.id}</td><td>${m.ts?new Date(m.ts).toLocaleString():""}</td><td>${m.name||""}</td><td>${f(m.finalRpm,0)}</td><td>${f(m.peak)}</td><td>${m.result}</td><td>${m.local?"":`<button onclick="view('${m.id}')">View</button>`}</td></tr>`).join("")||
   `<tr><td colspan="7" class="mut">No runs yet.</td></tr>`;
+ renderRunPicker();
 }
 async function view(id){
  try{
@@ -299,5 +314,5 @@ $("#nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;
  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.id==="t_"+b.dataset.t));
  if(b.dataset.t==="dash")requestAnimationFrame(()=>frame(shown))};
 addEventListener("resize",()=>frame(shown));
-fill(E.DEF);drawAll(0);refresh();setInterval(refresh,15000);
+fill(E.DEF);drawAll(0);refresh();scan();setInterval(refresh,15000);
 </script></body></html>
