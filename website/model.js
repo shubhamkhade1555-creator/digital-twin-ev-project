@@ -39,7 +39,8 @@ function simulate(q){
   const refR=Math.min(p.rpmRef,p.ramp*tt);
   west+=((vc-Rw*If)/KtC-west)*dt/2e-3;
   const est=west*60/6.2832;
-  if(p.protect&&!fb&&tt>0.1){
+  const tRamp=p.rpmRef/Math.max(p.ramp,1);
+  if(p.protect&&!fb&&tt>0.1&&tt>tRamp+0.02){
    if(Math.abs(meas-est)>0.06*Math.max(est,500)){
     sensT+=dt;
     if(sensT>0.02){add(tt,"Speed sensor and back-EMF estimate differ by more than 6 %","warn");fb=true;add(tt,"Sensorless fallback: controller uses the back-EMF estimate","act")}
@@ -86,7 +87,7 @@ function simulate(q){
  const hidden=p.sensOff!==0&&!fb;
  let outcome;
  if(hasF)outcome="INCIDENT";else if(hidden)outcome="HIDDEN FAULT";else if(hasA)outcome="PREVENTED";
- else if(hasW||sum.Ifin>p.Icont||Vmin<46||tmax>100)outcome="WARNING";else outcome="NORMAL";
+ else if(hasW||sum.Ifin>p.Icont*1.02||Vmin<46||tmax>100||sum.finalRpm>3000)outcome="WARNING";else outcome="NORMAL";
  return{t:t,d:d,p:p,ev:ev,outcome:outcome,sum:sum,fb:fb,hidden:hidden};
 }
 
