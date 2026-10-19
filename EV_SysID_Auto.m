@@ -25,122 +25,72 @@ function R = EV_SysID_Auto(runDir, P) %#ok<INUSD>
 %   compare(), which is the initial state x0, not the fit. That is why its report showed
 %   "val fit 2034946643217408.2%". This file uses the 2nd output (the real NRMSE fit).
 
-%% ---- settings --------------------------------------------------------------------------
-cfg.inputs      = {'RPM_rpm','Idc_f_A'};          % what drives the battery: motor speed, motor current
-cfg.outputs     = {'Vbatt_V','Ibatt_A','SOC'};    % battery response: voltage, current, SOC
-cfg.socMinRange = 1e-3;                           % SOC is used only if it changes by more than this
-cfg.orders      = 1:6;                            % state orders tried
-cfg.valFrac     = 0.2;                            % last 20 % of the run = validation
-cfg.fitPass     = 70;                             % fit >= this  -> PASS
-cfg.fitWarn     = 40;                             % fit >= this  -> WARN, below -> FAIL
-cfg.show        = true;                           % open pop-up figures
-cfg.show        = logical(bv('EV_SysID_Show', cfg.show));
-cfg.fitPass     = bv('EV_SysID_FitPass', cfg.fitPass);
-Ts = 1e-3;                                        % Black Box sample time (1 ms ZOH)
-TW = 'EV_BlackBox_log';
+%% ---- settings
+cfg.orders  = 1:6;                    % state orders tried
+cfg.valFrac = 0.3;                    % last 30 % of the run = validation
+cfg.minN    = 300;                    % at least 0.3 s of 1 ms samples
+cfg.fitPass = bv('EV_SysID_FitPass', 70);
+cfg.fitWarn = 40;
+cfg.show    = logical(bv('EV_SysID_Show', true));
+Ts = 1e-3;
 
 chk = cell(0,3);
 fprintf('\n====================================================\n');
 fprintf('[SysID] BLACK-BOX SYSTEM IDENTIFICATION (automatic)\n');
 fprintf('====================================================\n');
 
-%% ---- 1. read the Black Box -------------------------------------------------------------
+%% ---- 1. read the battery data: archive clean data (1 ms window means) ----
+t = []; U = []; Y = []; labels_u = {}; labels_y = {};
 try
-    BB = evalin('base', TW);
+    C = evalin('base', 'EV_DAQ_Clean');
+    need = {'RPM','MotorCurrent','BatteryVoltage','BatteryCurrent'};
+    if all(ismember(need, C.Properties.VariableNames))
+        M  = [C.RPM C.MotorCurrent C.BatteryVoltage C.BatteryCurrent];
+        ok = all(isfinite(M), 2);
+        t  = C.Time(ok);  M = M(ok,:);
+        U  = M(:,1:2);    Y = M(:,3:4);
+        labels_u = {'RPM','MotorCurrent'};
+        labels_y = {'Vbatt_V','Ibatt_A'};
+        chk = addRow(chk, 'Data source', 'PASS', 'EV_DAQ_Clean (1 ms window means, PWM ripple averaged)');
+    end
 catch
-    chk = addRow(chk, 'Black Box data', 'FAIL', 'EV_BlackBox_log is not in the workspace - run the simulation first');
-    R = bail(chk);  return
 end
-if ~isa(BB, 'timeseries')
-    chk = addRow(chk, 'Black Box data', 'FAIL', ['EV_BlackBox_log is class ' class(BB) ', expected timeseries']);
+if isempty(t)
+    chk = addRow(chk, 'Data source', 'FAIL', 'EV_DAQ_Clean not in the workspace - run the simulation first');
     R = bail(chk);  return
-end
-t  = BB.Time(:);
-BBd = double(BB.Data);
-if size(BBd,1) ~= numel(t) && ndims(BBd) == 3 && size(BBd,3) == numel(t)
-    BBd = reshape(permute(BBd, [3 1 2]), numel(t), []);
 end
 t = t - t(1);
-lab = bbLabels(size(BBd,2));
-if numel(lab) ~= size(BBd,2)
-    chk = addRow(chk, 'Channel labels', 'FAIL', sprintf('%d columns but %d labels - rebuild with EV_DAQ_Builder_V7(''BlackBox'') and run again', size(BBd,2), numel(lab)));
-    R = bail(chk);  return
-end
+N = size(U,1);
 
-[tfU, iU] = ismember(cfg.inputs, lab);
-if ~all(tfU)
-    chk = addRow(chk, 'Input channels', 'FAIL', ['missing: ' strjoin(cfg.inputs(~tfU), ', ') '  (have: ' strjoin(lab, ', ') ')']);
+%% ---- 2. length and excitation checks ----
+if N < cfg.minN
+    chk = addRow(chk, 'Samples', 'FAIL', sprintf('%d samples, need at least %d. Use a stop time of 0.5 s or more.', N, cfg.minN));
     R = bail(chk);  return
 end
-[tfY, iY] = ismember(cfg.outputs, lab);
-outNames = cfg.outputs(tfY);  iY = iY(tfY);
-if any(~tfY)
-    chk = addRow(chk, 'Output channels', 'WARN', ['not in Black Box, skipped: ' strjoin(cfg.outputs(~tfY), ', ')]);
-end
-if isempty(outNames)
-    chk = addRow(chk, 'Output channels', 'FAIL', 'none of the requested outputs exist');
-    R = bail(chk);  return
-end
-
-%% ---- 2. data checks ----------------------------------------------------------------------
-N = size(BBd,1);
-if any(~isfinite(BBd(:, [iU iY])), 'all')
-    chk = addRow(chk, 'Data NaN/Inf', 'FAIL', 'NaN or Inf in the selected channels');
-    R = bail(chk);  return
-end
-chk = addRow(chk, 'Data NaN/Inf', 'PASS', 'none');
-if N < 50
-    chk = addRow(chk, 'Samples', 'FAIL', sprintf('%d samples is too few for identification', N));
-    R = bail(chk);  return
-end
-dt = median(diff(t));
 chk = addRow(chk, 'Samples', 'PASS', sprintf('%d samples, %.3f s', N, t(end)));
-if abs(dt - Ts) < 1e-9
-    chk = addRow(chk, 'Sample time', 'PASS', '1 ms');
-else
-    chk = addRow(chk, 'Sample time', 'WARN', sprintf('median step %.6g s, identification uses %.3g s', dt, Ts));
-end
-
-% outputs: drop SOC that does not move, drop constant outputs
-keep = true(size(iY));
-for k = 1:numel(iY)
-    x = BBd(:, iY(k));  rg = max(x) - min(x);
-    if strcmp(outNames{k}, 'SOC') && rg < cfg.socMinRange
-        keep(k) = false;
-        chk = addRow(chk, 'SOC output', 'INFO', sprintf('not identified: SOC changes only %.1e in this run (needs > %.0e). Use a longer run.', rg, cfg.socMinRange));
-    elseif std(x) < 1e-9 * (1 + abs(mean(x)))
-        keep(k) = false;
-        chk = addRow(chk, ['Output ' outNames{k}], 'WARN', 'constant signal, skipped');
-    end
-end
-outNames = outNames(keep);  iY = iY(keep);
-if isempty(outNames)
-    chk = addRow(chk, 'Output channels', 'FAIL', 'no usable output left');
-    R = bail(chk);  return
-end
-% inputs must move
-for k = 1:numel(iU)
-    x = BBd(:, iU(k));
-    if std(x) < 1e-9 * (1 + abs(mean(x)))
-        chk = addRow(chk, ['Input ' cfg.inputs{k}], 'FAIL', 'constant signal: nothing to identify from');
+for k = 1:2
+    if std(U(:,k)) < 1e-3*(1 + abs(mean(U(:,k))))
+        chk = addRow(chk, ['Excitation ' labels_u{k}], 'FAIL', ...
+            'input is flat: the run has no load or speed change to learn from');
         R = bail(chk);  return
     end
 end
-labels_u = cfg.inputs;  labels_y = outNames;
-U = BBd(:, iU);  Y = BBd(:, iY);
+chk = addRow(chk, 'Excitation', 'PASS', sprintf('RPM range %.0f rpm, current range %.1f A', ...
+    range(U(:,1)), range(U(:,2))));
 
-%% ---- 3. normalise and split ---------------------------------------------------------------
+%% ---- 3. normalise and split (70 % estimation, 30 % validation) ----
 U0 = mean(U,1);  Us = std(U,0,1);
 Y0 = mean(Y,1);  Ys = std(Y,0,1);
-Un = (U - U0) ./ Us;  Yn = (Y - Y0) ./ Ys;
+Un = (U - U0) ./ Us;
+Yn = (Y - Y0) ./ Ys;
 Nest = floor((1 - cfg.valFrac) * N);
-Ze = iddata(Yn(1:Nest,:),     Un(1:Nest,:),     Ts, 'InputName', labels_u, 'OutputName', labels_y);
-Zv = iddata(Yn(Nest+1:N,:),   Un(Nest+1:N,:),   Ts, 'InputName', labels_u, 'OutputName', labels_y);
+Ze = iddata(Yn(1:Nest,:),   Un(1:Nest,:),   Ts, 'InputName', labels_u, 'OutputName', labels_y);
+Zv = iddata(Yn(Nest+1:N,:), Un(Nest+1:N,:), Ts, 'InputName', labels_u, 'OutputName', labels_y);
 tv = t(Nest+1:N);
 
 fprintf('[SysID] Inputs : %s\n', strjoin(labels_u, ', '));
 fprintf('[SysID] Outputs: %s\n', strjoin(labels_y, ', '));
-fprintf('[SysID] Estimation %d samples (%.0f ms) | validation %d samples (%.0f ms)\n', Nest, Nest*Ts*1e3, N-Nest, (N-Nest)*Ts*1e3);
+fprintf('[SysID] Estimation %d samples | validation %d samples\n', Nest, N - Nest);
 fprintf('[SysID] n4sid order sweep (fit = NRMSE %% on the validation part):\n');
 
 %% ---- 4. order sweep -------------------------------------------------------------------------
@@ -245,13 +195,30 @@ try
     xlabel('State order nx');  ylabel('Mean validation fit [%]');
     title(sprintf('Order sweep (chosen: nx = %d)', bestN));
 
-    figs  = [f1 f2 f3 f4];
-    names = {'SysID_1_Data.png', 'SysID_2_Validation.png', 'SysID_3_Poles.png', 'SysID_4_OrderSweep.png'};
+    % full-run comparison: measured vs model over the whole run (estimation + validation)
+    Zall = iddata(Yn, Un, Ts, 'InputName', labels_u, 'OutputName', labels_y);
+    [yAll, ~] = compare(Zall, best);
+    YpredAll = yAll.OutputData .* Ys + Y0;
+    f5 = mk('SysID 5 - whole run (measured vs model)', [60 40 1000 760]);
+    for k = 1:ny
+        subplot(ny, 1, k);
+        plot(t, Y(:,k), 'k', 'LineWidth', 1.4);  hold on;
+        plot(t, YpredAll(:,k), 'r--', 'LineWidth', 1.4);
+        xline(t(Nest), ':', 'validation starts');
+        title(sprintf('%s: whole run, validation fit %.1f %%', labels_y{k}, bestFit(k)), 'Interpreter', 'none');
+        ylabel(labels_y{k}, 'Interpreter', 'none');  grid on;
+        if k == 1, legend('measured', 'model', 'Location', 'best'); end
+    end
+    xlabel('Time [s]');
+
+    figs  = [f1 f2 f3 f4 f5];
+    names = {'SysID_1_Data.png', 'SysID_2_Validation.png', 'SysID_3_Poles.png', ...
+             'SysID_4_OrderSweep.png', 'SysID_5_WholeRun.png'};
     for k = 1:numel(figs)
         saveFigure(figs(k), fullfile(figDir, names{k}));
     end
     drawnow;
-    figNote = sprintf('4 figures saved in %s', figDir);
+    figNote = sprintf('%d figures saved in %s', numel(figs), figDir);
     chk = addRow(chk, 'Figures', 'PASS', figNote);
 catch ME
     chk = addRow(chk, 'Figures', 'WARN', ['could not create/save figures: ' ME.message]);
