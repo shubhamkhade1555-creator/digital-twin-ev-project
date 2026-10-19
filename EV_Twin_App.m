@@ -1,10 +1,9 @@
 function varargout = EV_Twin_App
-%EV_TWIN_APP  EV digital twin: fault scenarios, incident chain and prevention.
-%   Same reduced-order model, scenarios and protection logic as the website dashboard.
-%   Needs MATLAB only (no Simulink). Start with:   EV_Twin_App
+%EV_TWIN_APP  EV digital twin: fault scenarios, change-a-value comparison, incident chain.
+%   Same reduced-order model as the website dashboard.
+%   Start with:  EV_Twin_App
 %   Defaults = values of BLDCSpeedControlData.m. "Reset to defaults" restores them.
-%   Reduced-order estimates for design review and teaching, not a replacement for the
-%   Simulink model.
+%   Reduced-order estimates for design review and teaching, not the Simulink model.
 
 DEF = evDefaults();
 SC  = evScenarios();
@@ -12,20 +11,23 @@ FLD = { 'rpmRef','Target speed','rpm',1; 'ramp','Speed ramp','rpm/s',1; 'load','
         'Ipeak','I peak limit','A',1; 'Icont','I continuous','A',1; 'Kt','Torque constant Kt','Nm/A',1; ...
         'tstop','Stop time','s',1; 'soc0','Start SOC','%',100; 'rFac','Pack resistance factor','x',1; ...
         'ktFac','Magnet strength factor','x',1; 'sensOff','Speed sensor error','%',100; 'packAh','Pack capacity','Ah',1 };
-nF = size(FLD,1);
-H  = struct();
-ax = gobjects(1,4);
+nF  = size(FLD,1);
+H   = struct();
+ax  = gobjects(1,4);
+SW  = struct();
+SWax = gobjects(1,4);
+SWF = [];
 
 fig = uifigure('Name','EV Digital Twin - fault scenarios','Position',[40 40 1440 880]);
 g   = uigridlayout(fig,[1 2],'ColumnWidth',{340,'1x'},'Padding',8,'ColumnSpacing',10);
 
-% ---------- left: parameters, scenario and buttons
+% ---------- left: parameters, scenario, buttons
 lp   = uipanel(g,'Title','Parameters (defaults = parameter file)');
-rowH = [repmat({26},1,nF), {26},{26},{22},{26},{30},{30},{30},{110}];
+rowH = [repmat({26},1,nF), {26},{26},{22},{26},{30},{30},{30},{110},{30}];
 lg   = uigridlayout(lp,[numel(rowH) 2],'RowHeight',rowH,'ColumnWidth',{'1.6x','1x'},'Padding',8,'RowSpacing',4);
 for k = 1:nF
     place(uilabel(lg,'Text',sprintf('%s [%s]',FLD{k,2},FLD{k,3})),k,1);
-    H.(FLD{k,1}) = uieditfield(lg,'numeric','Value',DEF.(FLD{k,1})*FLD{k,4});
+    H.(FLD{k,1}) = uieditfield(lg,'numeric','Value',DEF.(FLD{k,1})*FLD{k,4},'ValueDisplayFormat','%g');
     place(H.(FLD{k,1}),k,2);
 end
 r0 = nF;
@@ -43,16 +45,17 @@ place(uibutton(lg,'Text','Reset to defaults','ButtonPushedFcn',@onReset,'Backgro
 place(uibutton(lg,'Text','Scan all scenarios (OFF and ON)','ButtonPushedFcn',@onScan),r0+7,[1 2]);
 H.outcome = uilabel(lg,'Text','Ready. Press Run.','WordWrap','on','FontWeight','bold','FontSize',13);
 place(H.outcome,r0+8,[1 2]);
+place(uibutton(lg,'Text','Change a value and compare (sweep window)','ButtonPushedFcn',@openSweep, ...
+    'BackgroundColor',[0.3 0.7 0.4],'FontColor',[1 1 1]),r0+9,[1 2]);
 
 % ---------- right: four plots and a tab group
 rp = uipanel(g,'BorderType','none');
 rg = uigridlayout(rp,[3 2],'RowHeight',{'1x','1x','1.3x'},'ColumnWidth',{'1x','1x'},'Padding',0,'RowSpacing',8,'ColumnSpacing',8);
-titles = {'Speed [rpm]','Motor current, filtered [A]','Battery voltage [V]','Projected temperature [deg C]'};
 for a = 1:4
     ax(a) = uiaxes(rg);
     ax(a).Layout.Row = ceil(a/2); ax(a).Layout.Column = mod(a-1,2)+1;
-    title(ax(a),titles{a}); grid(ax(a),'on'); box(ax(a),'on'); xlabel(ax(a),'Time [s]');
 end
+setTitles(ax);
 tg   = uitabgroup(rg); tg.Layout.Row = 3; tg.Layout.Column = [1 2];
 tTL  = uitab(tg,'Title','Incident timeline');
 tCA  = uitab(tg,'Title','Calculation');
@@ -65,7 +68,7 @@ taPR = uitextarea(uigridlayout(tPR,[1 1]),'Editable','off');
 taCM = uitextarea(uigridlayout(tCM,[1 1]),'Editable','off','FontName','Consolas');
 
 % Run logs UI
-gRL  = uigridlayout(tRL,[2 2],'RowHeight',{32,'1x'},'ColumnWidth',{'1.1x','1x'},'Padding',6,'RowSpacing',6,'ColumnSpacing',6);
+gRL   = uigridlayout(tRL,[2 2],'RowHeight',{32,'1x'},'ColumnWidth',{'1.1x','1x'},'Padding',6,'RowSpacing',6,'ColumnSpacing',6);
 ddRun = uidropdown(gRL,'Items',{'Choose a run...'},'ValueChangedFcn',@onPickRun);
 ddRun.Layout.Row = 1; ddRun.Layout.Column = 1;
 btnRef = uibutton(gRL,'Text','Refresh list','ButtonPushedFcn',@(~,~) refreshRunList(ddRun, pwd));
@@ -86,7 +89,7 @@ end
 refreshRunList(ddRun, pwd);
 tg.SelectionChangedFcn = @onTabChanged;
 
-%% ---------------- nested callbacks ----------------
+%% ================= nested callbacks =================
     function p = readP()
         p = DEF;
         for idx = 1:nF
@@ -110,16 +113,18 @@ tg.SelectionChangedFcn = @onTabChanged;
 
     function onRun(~,~)
         s = SC(H.scn.Value);
-        r = prep(evSim(readP()), s);
-        drawRuns({r},{'this run'});
+        p = mergeP(readP(), s.p);          % scenario is applied on top of the typed values
+        r = prep(evSim(p), s);
+        plotRuns(ax, {r}, {'this run'}, [0 0.447 0.741]);
         showRun(r);
     end
 
     function onCompare(~,~)
-        s = SC(H.scn.Value); p = readP();
-        p.protect = false; rOff = prep(evSim(p), s); rOff.name = [s.name ' - protection OFF'];
-        p.protect = true;  rOn  = prep(evSim(p), s); rOn.name  = [s.name ' - protection ON'];
-        drawRuns({rOff,rOn},{'OFF','ON'});
+        s = SC(H.scn.Value);
+        base = mergeP(readP(), s.p);
+        base.protect = false; rOff = prep(evSim(base), s);
+        base.protect = true;  rOn  = prep(evSim(base), s);
+        plotRuns(ax, {rOff,rOn}, {'protection OFF','protection ON'}, [0 0.447 0.741; 0.85 0.325 0.098]);
         showRun(rOn);
         taCM.Value = compareText({rOff,rOn});
     end
@@ -159,30 +164,96 @@ tg.SelectionChangedFcn = @onTabChanged;
         taPR.Value = helpText(r);
     end
 
-    function drawRuns(runs, names)
-        for ia = 1:4
-            cla(ax(ia)); hold(ax(ia),'on');
+    function openSweep(~,~)
+        if ~isempty(SWF) && isvalid(SWF)
+            SWF.Visible = 'on';
+            return
         end
-        cols = {[0 0.447 0.741],[0.85 0.325 0.098]};
-        for q = 1:numel(runs)
-            r = runs{q}; c = cols{min(q,2)};
-            if q == 1, ls = '-'; else, ls = '--'; end
-            plot(ax(1), r.t, r.d.rpm, ls, 'Color',c, 'LineWidth',1.5, 'DisplayName',['true speed, ' names{q}]);
-            plot(ax(2), r.t, r.d.i,   ls, 'Color',c, 'LineWidth',1.5);
-            plot(ax(3), r.t, r.d.vb,  ls, 'Color',c, 'LineWidth',1.5);
-            plot(ax(4), r.t, r.d.tm,  ls, 'Color',c, 'LineWidth',1.5, 'DisplayName',['motor, ' names{q}]);
-            plot(ax(4), r.t, r.d.tb,  ':', 'Color',c, 'LineWidth',1.2, 'DisplayName',['battery, ' names{q}]);
+        SWF = uifigure('Name','EV Twin - change a value and compare','Position',[90 60 1260 780]);
+        sg  = uigridlayout(SWF,[1 2],'ColumnWidth',{300,'1x'},'Padding',8,'ColumnSpacing',10);
+        sp  = uipanel(sg,'Title','Change one value');
+        sl  = uigridlayout(sp,[9 2],'RowHeight',{22,28,22,28,22,28,30,80,70}, ...
+            'ColumnWidth',{'1x','1x'},'Padding',8,'RowSpacing',4);
+        place(uilabel(sl,'Text','Parameter to change'),1,[1 2]);
+        SW.param = uidropdown(sl,'Items',FLD(:,2),'ItemsData',num2cell(1:nF),'Value',1, ...
+            'ValueChangedFcn',@(~,~) setSweepDefaults());
+        place(SW.param,2,[1 2]);
+        place(uilabel(sl,'Text','From (display units)'),3,1);
+        place(uilabel(sl,'Text','To (display units)'),3,2);
+        SW.from = uieditfield(sl,'numeric','ValueDisplayFormat','%g');
+        SW.to   = uieditfield(sl,'numeric','ValueDisplayFormat','%g');
+        place(SW.from,4,1); place(SW.to,4,2);
+        place(uilabel(sl,'Text','Number of values (2 to 8)'),5,[1 2]);
+        SW.steps = uieditfield(sl,'numeric','Value',5,'Limits',[2 8],'RoundFractionalValues','on','ValueDisplayFormat','%g');
+        place(SW.steps,6,[1 2]);
+        place(uibutton(sl,'Text','Run change','ButtonPushedFcn',@runSweep, ...
+            'BackgroundColor',[0.2 0.45 1],'FontColor',[1 1 1]),7,1);
+        place(uibutton(sl,'Text','Clear plots','ButtonPushedFcn',@clearSweep),7,2);
+        SW.note = uilabel(sl,'Text','Other values come from the main window, including the chosen scenario and the protection switch. Only the selected value changes between runs.','WordWrap','on');
+        place(SW.note,8,[1 2]);
+        SW.status = uilabel(sl,'Text','Ready. Pick a parameter and a range, then press Run change.','WordWrap','on','FontWeight','bold');
+        place(SW.status,9,[1 2]);
+
+        rr = uigridlayout(sg,[3 2],'RowHeight',{'1x','1x',240},'ColumnWidth',{'1x','1x'}, ...
+            'Padding',0,'RowSpacing',8,'ColumnSpacing',8);
+        for aAx = 1:4
+            SWax(aAx) = uiaxes(rr);
+            SWax(aAx).Layout.Row = ceil(aAx/2); SWax(aAx).Layout.Column = mod(aAx-1,2)+1;
         end
-        r1 = runs{1};
-        plot(ax(1), r1.t, r1.d.ref, 'k:', 'LineWidth',1, 'DisplayName','target');
-        yline(ax(2), r1.p.Icont, '--', 'Icont');
-        yline(ax(2), r1.p.Ipeak, 'r--', 'Ipeak');
-        yline(ax(3), 45.4, 'r--', '45.4 V');
-        yline(ax(3), 46, '--', '46 V');
-        yline(ax(4), 120, 'r--', '120 C');
-        yline(ax(4), 60, '--', '60 C');
-        legend(ax(1),'show','Location','southeast');
-        legend(ax(4),'show','Location','northwest');
+        setTitles(SWax);
+        SW.table = uitable(rr,'ColumnName',{'Value','Outcome','Peak I [A]','Min V [V]','Motor max [C]', ...
+            'Battery max [C]','Speed end [rpm]','SOC used [%]','Events','Peak I vs first [A]'}, ...
+            'Data',cell(0,10));
+        SW.table.Layout.Row = 3; SW.table.Layout.Column = [1 2];
+        setSweepDefaults();
+    end
+
+    function setSweepDefaults()
+        kp = SW.param.Value;
+        v = H.(FLD{kp,1}).Value;
+        if v == 0
+            aV = -5; bV = 5;
+        else
+            aV = 0.8*v; bV = 1.2*v;
+        end
+        SW.from.Value = aV;
+        SW.to.Value   = bV;
+    end
+
+    function runSweep(~,~)
+        kp = SW.param.Value;
+        n = min(8, max(2, round(SW.steps.Value)));
+        if SW.to.Value == SW.from.Value
+            SW.status.Text = 'From and To are equal: nothing to compare. Change one of them.';
+            return
+        end
+        v = linspace(SW.from.Value, SW.to.Value, n);
+        s = SC(H.scn.Value);
+        base = mergeP(readP(), s.p);
+        swRuns = cell(1,n); labs = cell(1,n);
+        for q = 1:n
+            p = base;
+            p.(FLD{kp,1}) = v(q) / FLD{kp,4};
+            swRuns{q} = prep(evSim(p), s);
+            labs{q} = sprintf('%s = %g %s', FLD{kp,2}, v(q), FLD{kp,3});
+        end
+        plotRuns(SWax, swRuns, labs, parula(n));
+        rows = cell(n,10);
+        for q = 1:n
+            sm = swRuns{q}.sum;
+            rows(q,:) = {labs{q}, swRuns{q}.outcome, round(sm.Ipk,1), round(sm.Vmin,2), round(sm.Tmax,0), ...
+                round(sm.Tbmax,0), round(sm.finalRpm,0), round(100*sm.SOCdrop,4), numel(swRuns{q}.ev), ...
+                round(sm.Ipk - swRuns{1}.sum.Ipk,1)};
+        end
+        SW.table.Data = rows;
+        SW.status.Text = sprintf('%d runs done. First value: %s. Last value: %s.', n, swRuns{1}.outcome, swRuns{end}.outcome);
+    end
+
+    function clearSweep(~,~)
+        for aAx = 1:4, cla(SWax(aAx)); end
+        setTitles(SWax);
+        SW.table.Data = cell(0,10);
+        SW.status.Text = 'Cleared.';
     end
 
     function onTabChanged(~, event)
@@ -211,6 +282,40 @@ end  % EV_Twin_App
 %% =====================================================================
 function place(h, r, c)
 h.Layout.Row = r; h.Layout.Column = c;
+end
+
+function setTitles(axs)
+t = {'Speed [rpm]','Motor current, filtered [A]','Battery voltage [V]','Projected temperature [deg C] (dotted = battery)'};
+for a = 1:numel(axs)
+    title(axs(a), t{a}); grid(axs(a),'on'); box(axs(a),'on'); xlabel(axs(a),'Time [s]');
+end
+end
+
+function plotRuns(axs, runs, labs, cols)
+for a = 1:4
+    cla(axs(a)); hold(axs(a),'on');
+end
+for q = 1:numel(runs)
+    r = runs{q}; c = cols(q,:);
+    plot(axs(1), r.t, r.d.rpm, '-', 'Color',c, 'LineWidth',1.5, 'DisplayName',labs{q});
+    plot(axs(2), r.t, r.d.i,   '-', 'Color',c, 'LineWidth',1.5, 'DisplayName',labs{q});
+    plot(axs(3), r.t, r.d.vb,  '-', 'Color',c, 'LineWidth',1.5, 'DisplayName',labs{q});
+    plot(axs(4), r.t, r.d.tm,  '-', 'Color',c, 'LineWidth',1.5, 'DisplayName',labs{q});
+    plot(axs(4), r.t, r.d.tb,  ':', 'Color',c, 'LineWidth',1.5, 'HandleVisibility','off');
+end
+r1 = runs{1};
+plot(axs(1), r1.t, r1.d.ref, 'k:', 'LineWidth',1, 'DisplayName','target');
+yline(axs(2), r1.p.Icont, '--', 'Icont', 'HandleVisibility','off');
+yline(axs(2), r1.p.Ipeak, 'r--', 'Ipeak', 'HandleVisibility','off');
+yline(axs(3), 45.4, 'r--', '45.4 V', 'HandleVisibility','off');
+yline(axs(3), 46, '--', '46 V', 'HandleVisibility','off');
+yline(axs(4), 120, 'r--', '120 C', 'HandleVisibility','off');
+yline(axs(4), 60, '--', '60 C', 'HandleVisibility','off');
+for a = 1:4
+    hold(axs(a),'off'); grid(axs(a),'on');
+    legend(axs(a),'show','Location','best','FontSize',8);
+end
+setTitles(axs);
 end
 
 function DEF = evDefaults()
@@ -280,9 +385,9 @@ D = struct('t',zeros(nR,1));
 for q = 1:numel(keys), D.(keys{q}) = zeros(nR,1); end
 ev   = struct('t',{},'msg',{},'kind',{});
 seen = containers.Map('KeyType','char','ValueType','logical');
-w=0; i=0; ig=0; soc=p.soc0; ib=0; ibF=0; vb=voc(p.soc0); If=0; vc=0; west=0;
-uvT=0; ocT=0; sensT=0; ktT=0; fb=false; derate=false; trip=false;
-tmax=0; tbmax=0; Vmin=1e9; Tm=25; Tb=25; qi=0;
+w = 0; i = 0; ig = 0; soc = p.soc0; ib = 0; ibF = 0; vb = voc(p.soc0); If = 0; vc = 0; west = 0;
+uvT = 0; ocT = 0; sensT = 0; ktT = 0; fb = false; derate = false; trip = false;
+tmax = 0; tbmax = 0; Vmin = 1e9; Tm = 25; Tb = 25; qi = 0;
 for k = 0:N
     tt = k*dt; rpm = w*60/(2*pi); meas = rpm*(1+p.sensOff);
     refR = min(p.rpmRef, p.ramp*tt);
@@ -381,14 +486,17 @@ hasA = any(strcmp({ev.kind},'act'));
 hasW = any(strcmp({ev.kind},'warn'));
 hidden = p.sensOff ~= 0 && ~fb;
 Ifin = D.i(end);
-if hasF,        outc = 'INCIDENT';
-elseif hidden,  outc = 'HIDDEN FAULT';
-elseif hasA,    outc = 'PREVENTED';
-elseif hasW || Ifin > p.Icont || Vmin < 46 || tmax > 100, outc = 'WARNING';
+if hasF
+    outc = 'INCIDENT';
+elseif hidden
+    outc = 'HIDDEN FAULT';
+elseif hasA
+    outc = 'PREVENTED';
+elseif hasW || Ifin > p.Icont || Vmin < 46 || tmax > 100
+    outc = 'WARNING';
 else
     outc = 'NORMAL';
 end
-
 ILend = p.Ipeak; if derate, ILend = 0.5*p.Icont; end
 S = struct('finalRpm',D.rpm(end),'refFinal',D.ref(end),'Ipk',max(D.i),'Ifin',Ifin, ...
     'Vb',D.vb(end),'Ib',D.ib(end),'Vmin',Vmin,'SOCdrop',D.soc(1)-D.soc(end), ...

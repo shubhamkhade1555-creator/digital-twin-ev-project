@@ -1,6 +1,6 @@
 // GET /api/runs -> list | GET /api/runs?id=X -> one run | POST /api/runs -> save a run
 // Storage: Vercel Blob when BLOB_READ_WRITE_TOKEN exists, else memory (lost on cold start).
-const { checks, KEYS } = require("../model.js");
+const { checks, KEYS, DEF } = require("../model.js");
 let blob = null; try { blob = require("@vercel/blob"); } catch (e) {}
 const useBlob = () => blob && process.env.BLOB_READ_WRITE_TOKEN;
 const mem = globalThis.__evruns || (globalThis.__evruns = new Map());
@@ -36,18 +36,25 @@ module.exports = async (req, res) => {
     if (matlab && (!key || req.headers["x-api-key"] !== key)) return res.status(401).json({ error: "bad or missing x-api-key" });
     if (!Array.isArray(b.t) || b.t.length < 5 || b.t.length > (matlab ? 20001 : 2001) || typeof b.d !== "object")
       return res.status(400).json({ error: "need t[] (5..2000 samples) and d{}" });
+
     const n = b.t.length, tstop = Number(b.t[n - 1]) || 0.3, bp = b.p || {};
-    const p = { rpmRef: +bp.rpmRef || 2950, ramp: +bp.ramp || 13000, load: bp.load == null ? 1 : +bp.load, Ipeak: +bp.Ipeak || 45, tstop: +tstop.toFixed(3) };
+    // full settings: defaults first, then whatever the caller sent (MATLAB sends only some fields)
+    const p = Object.assign({}, DEF, bp, { tstop: +tstop.toFixed(3) });
     const d = {};
-    KEYS.forEach(k => { d[k] = Array.isArray(b.d[k]) && b.d[k].length === n ? b.d[k].map(v => (v == null ? null : +v))
-      : k === "ref" ? b.t.map(x => Math.min(p.rpmRef, p.ramp * x)) : Array(n).fill(null); });
+    KEYS.forEach(k => {
+      d[k] = Array.isArray(b.d[k]) && b.d[k].length === n ? b.d[k].map(v => (v == null ? null : +v))
+        : k === "ref" ? b.t.map(x => Math.min(p.rpmRef, p.ramp * x)) : Array(n).fill(null);
+    });
     const run = { t: b.t.map(Number), d, p };
     const chk = checks({ ...run, d: Object.fromEntries(KEYS.map(k => [k, d[k].map(v => (v == null ? NaN : v))])) });
     const result = chk.some(c => c.s === "FAIL") ? "FAIL" : chk.some(c => c.s === "WARN") ? "WARN" : "PASS";
     const id = new Date().toISOString().replace(/\D/g, "").slice(0, 14) + "-" + Math.random().toString(36).slice(2, 5);
     const last = a => a[a.length - 1];
-    const meta = { id, ts: new Date().toISOString(), source: matlab ? "matlab" : (b.source === "csv" ? "csv" : "web"), name: String(b.name || "").slice(0, 60),
-      setup: `${p.rpmRef} rpm, load x${p.load}, ${p.tstop} s`, finalRpm: last(d.rpm), peak: Math.max(...d.i.filter(v => v != null)), result };
+    const finite = a => a.filter(v => v != null);
+    const meta = { id, ts: new Date().toISOString(), source: matlab ? "matlab" : (b.source === "csv" ? "csv" : "web"),
+      name: String(b.name || "").slice(0, 60),
+      setup: `${p.rpmRef} rpm, load x${p.load}, ${p.tstop} s`,
+      finalRpm: last(d.rpm), peak: Math.max(...finite(d.i)), result };
     await putRun({ ...meta, ...run, meta, checks: chk });
     return res.status(200).json({ id, result, storage: useBlob() ? "blob" : "memory" });
   } catch (e) { return res.status(500).json({ error: e.message }); }
