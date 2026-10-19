@@ -1,0 +1,1 @@
+{ "name": "ev-digital-twin", "private": true, "engines": { "node": "20.x" }, "dependencies": { "@vercel/blob": "^1.0.0" } }

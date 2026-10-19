@@ -1,0 +1,26 @@
+╔════════════════════════════════════════════════════════════╗
+║  EV Benchmark: 4x  ~8x  10x     t_stop = 3 s             ║
+║  PWM Carrier fix applied automatically before each run     ║
+║  17-Oct-2026 03:03:58                                    ║
+╚════════════════════════════════════════════════════════════╝
+  Folder : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+  t_stop : 3.0 s (forced)
+  Log    : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_Bench_4_8_10x_20261017_030358.txt
+
+  Ts validity (Tsc = 1e-4):
+    Run 1  Ts=2e-05  Tsc/Ts=5.0  VALID  | Carrier period will be set to 0.0004 s (=20xTs)
+    Run 2  Ts=5e-05  Tsc/Ts=2.0  VALID  | Carrier period will be set to 0.001 s (=20xTs)
+    Run 3  Ts=5e-05  Tsc/Ts=2.0  VALID  | Carrier period will be set to 0.001 s (=20xTs)
+
+  rpm_ref = 2950 rpm
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUN 1 of 3 : 4x  faster (Ts=2e-5)
+  Ts=2e-05 s   t_stop=3.0 s   Start: 17-Oct-2026 03:03:58
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[1] Ts_override = 2e-05
+[1] t_stop = 3.0 s
+[1] PWM Carrier fix: loading model to patch Carrier counter ...
+[1]   WARN: could not find carrier period param. Trying set_param Ts ...
+[1]   WARN: Carrier patch fallback failed: Counter block (mask) does not have a parameter named 'SampleTime'
+[1] Model saved with Carrier fix, closed (RunAll will reload).

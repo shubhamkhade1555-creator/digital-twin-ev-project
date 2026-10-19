@@ -1,0 +1,56 @@
+
+==============================================================
+  EV DIGITAL TWIN - EV_ReplaceWheelVisual   10-Oct-2026 19:43:03
+  Remove 3-D wheel visual  ->  add Wheel and Axle block
+==============================================================
+[WA] Project folder : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+[WA] MATLAB release : 2024b
+[WA] Compare runs   : 1     Save model : 1
+[WA] Step 1 – checking model state ...
+[WA]    model loaded: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\BLDCSpeedControl_EV_Layout_v2.slx
+[WA]    r_wheel from BLDCSpeedControlData.m: 0.25 m
+[WA] Step 2 – writing backup ...
+[WA]    backup: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\BLDCSpeedControl_EV_Layout_v2_backup_before_WheelAxle.slx
+[WA]    [PASS] Backup written                       C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\BLDCSpeedControl_EV_Layout_v2_backup_before_WheelAxle.slx
+[WA] Step 3 – locating blocks ...
+[WA]    WV_* blocks found         : 6
+[WA]    Existing Wheel and Axle   : 0
+[WA]      BLDCSpeedControl_EV_Layout_v2/WV_Joint
+[WA]      BLDCSpeedControl_EV_Layout_v2/WV_SPS
+[WA]      BLDCSpeedControl_EV_Layout_v2/WV_Solver
+[WA]      BLDCSpeedControl_EV_Layout_v2/WV_Wheel
+[WA]      BLDCSpeedControl_EV_Layout_v2/WV_World
+[WA]      BLDCSpeedControl_EV_Layout_v2/WV_theta
+[WA]    gearbox: BLDCSpeedControl_EV_Layout_v2/Gearbox//Reduction Gear
+[WA]    Speed Sensor, Vehicle Mechanical Load, Wheel_w_PS, GT_MON_Wheel_Speed – all present
+[WA] Step 5 – baseline simulation (hooks off, no archive) ...
+[WA]    OK  wall 232.5 s,  Black Box 301 x 8
+[WA]    [PASS] Baseline run                         232.5 s wall, 301 BB samples
+[WA] Step 6 – removing 3-D wheel visual blocks ...
+[WA]    deleted: BLDCSpeedControl_EV_Layout_v2/WV_Joint
+[WA]    deleted: BLDCSpeedControl_EV_Layout_v2/WV_SPS
+[WA]    deleted: BLDCSpeedControl_EV_Layout_v2/WV_Solver
+[WA]    deleted: BLDCSpeedControl_EV_Layout_v2/WV_Wheel
+[WA]    deleted: BLDCSpeedControl_EV_Layout_v2/WV_World
+[WA]    deleted: BLDCSpeedControl_EV_Layout_v2/WV_theta
+[WA]    [PASS] WV_* blocks removed                  6 deleted, 0 remaining
+[WA]    [PASS] Multibody blocks remaining           0 sm_lib block(s) still present
+[WA]    [PASS] Solver Configuration count           found 1 (expected 1 for the single physical network)
+[WA]    [PASS] Wheel-speed telemetry intact         Wheel_w_PS -> GT_MON_Wheel_Speed
+[WA]    compile check (after removal) ...
+[WA]    [PASS] Compile after removal                model compiles
+[WA] Step 7 – adding Wheel and Axle + vehicle speed display ...
+[WA]    Wheel and Axle lib  : fl_lib/Mechanical/Mechanisms/Wheel and Axle
+[WA]    Trans. sensor lib   : fl_lib/Mechanical/Mechanical Sensors/Ideal Translational Motion Sensor
+[WA]    added new block: BLDCSpeedControl_EV_Layout_v2/Wheel and Axle
+[WA]    [PASS] Wheel radius set                     parameter "R" = "r_wheel" = 0.25 m
+[WA]    Mechanism orientation : 1
+[WA]    [FAIL] Port count                           Wheel and Axle has 2 ports, sensor has 3 (both should have 2)
+[WA]    STOPPED: unexpected port layout.  Closing without saving.
+
+==============================================================
+  SUMMARY   PASS 8   WARN 0   FAIL 1     (304 s total)
+  RESULT: 1 CHECK(S) FAILED – model file on disk is UNCHANGED.
+          Safe backup: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\BLDCSpeedControl_EV_Layout_v2_backup_before_WheelAxle.slx
+  Report: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\WheelAxle_Report_20261010_194303.txt
+==============================================================

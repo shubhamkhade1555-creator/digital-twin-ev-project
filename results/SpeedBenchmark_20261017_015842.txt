@@ -1,0 +1,39 @@
+
+================================================================
+  EV DIGITAL TWIN - Speed Benchmark    17-Oct-2026 01:58:42
+================================================================
+  Project folder : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+  Log file       : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\SpeedBenchmark_20261017_015842.txt
+  Model          : BLDCSpeedControl_EV_Layout_v2
+  Ts values      : 5e-06 s  |  1e-05 s  |  2e-05 s  |  5e-05 s
+  Speedup labels : 1x, 2x, 4x, 10x
+  Tolerances     : RPM RMS 0.50%   Motor I 3.0%   Battery V 0.10 V
+================================================================
+
+[Benchmark] Checking required files ...
+[Benchmark]   FOUND   BLDCSpeedControl_EV_Layout_v2.slx
+[Benchmark]   FOUND   BLDCSpeedControlData.m
+[Benchmark]   FOUND   BLDCSpeedControlInput.mat
+[Benchmark]   FOUND   Batteries2_lib.slx
+[Benchmark]   FOUND   EV_DAQ_Builder_V7.m
+[Benchmark]   FOUND   RunAll.m
+[Benchmark] All required files found.
+[Benchmark] rpm_ref = 2950 rpm  (speed target used in tolerance checks)
+
+================================================================
+[Benchmark] RUN 1 of 4   Ts = 5e-06 s   (1x (baseline, 5 µs))
+================================================================
+[Benchmark] Run 1 done in 372.0 s wall time.
+[Benchmark]   rpm_end=2950.2  I_end=30.39 A  V_end=54.176 V
+[Benchmark]   RPM err=0.000%  I err=0.00%  V err=0.0000 V  PASS=15 WARN=4 FAIL=0
+
+================================================================
+[Benchmark] RUN 2 of 4   Ts = 1e-05 s   (2x faster  (10 µs))
+================================================================
+[Benchmark] Run 2 done in 283.4 s wall time.
+[Benchmark]   rpm_end=2950.2  I_end=30.28 A  V_end=54.177 V
+[Benchmark]   RPM err=0.017%  I err=-0.36%  V err=0.0012 V  PASS=15 WARN=4 FAIL=0
+
+================================================================
+[Benchmark] RUN 3 of 4   Ts = 2e-05 s   (4x faster  (20 µs))
+================================================================

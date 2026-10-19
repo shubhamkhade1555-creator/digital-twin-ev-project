@@ -1,0 +1,70 @@
+
+==============================================================
+  EV DIGITAL TWIN - RunAll   15-Oct-2026 19:07:26
+==============================================================
+[RunAll] 1. Project folder (auto-detected): C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+[RunAll]    MATLAB path set (project + sub-folders, run archives excluded).
+[RunAll]    Log file: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\RunAll_20261015_190726.txt
+[RunAll] 2. Checking files ...
+[RunAll]    FOUND              BLDCSpeedControl_EV_Layout_v2.slx
+[RunAll]    FOUND              BLDCSpeedControlData.m
+[RunAll]    FOUND              BLDCSpeedControlInput.mat
+[RunAll]    FOUND              Batteries2_lib.slx
+[RunAll]    FOUND              EV_DAQ_Builder_V7.m
+[RunAll]    FOUND              Batteries2.slx
+[RunAll]    [PASS] Required files                         all found
+[RunAll] 3. Checking MATLAB ...
+[RunAll]    MATLAB 2024b on PCWIN64
+[RunAll]    [WARN] MATLAB release                         2024b (project was built in R2024b - the model may not open in an older release)
+[RunAll]    product ok      : Simulink
+[RunAll]    product ok      : Simscape
+[RunAll]    product ok      : Simscape Electrical
+[RunAll]    product ok      : Simscape Battery
+[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...
+[RunAll]    Stop Time taken from the Simulink toolbar: 0.5 s (parameter file default 0.5 s is ignored)
+[RunAll]    rpm_ref=2950 rpm  I_cont=30 A  I_peak=45 A  Kt=0.107 N*m/A  t_stop=0.5 s  pack=50 Ah
+[RunAll] 5. Loading models ...
+[RunAll]    closed the old copy of BLDCSpeedControl_EV_Layout_v2 (reload from disk).
+[RunAll]    model Stop Time set to 0.5 s after the reload.
+[RunAll] 6a. Model fix: buck snubber -> exclude ...
+[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...
+[RunAll]    [PASS] DAQ setup                              model loaded, Black Box built, hooks written, model saved
+[RunAll]    Stop Time of the model for this run: 0.5 s
+[RunAll] 7. Separate compile check skipped (the simulation start compiles the model once; use RunAll('Compile',true) to force it).
+[RunAll] 8. Starting simulation (t_stop = 0.5 s). [LIVE] lines follow ...
+--------------------------------------------------------------
+[RunAll]    ... running, simulation time 0.006 / 0.5 s, wall time 5 s
+[RunAll]    ... running, simulation time 0.025 / 0.5 s, wall time 10 s
+[RunAll]    ... running, simulation time 0.046 / 0.5 s, wall time 15 s
+[RunAll]    ... running, simulation time 0.066 / 0.5 s, wall time 21 s
+[RunAll]    ... running, simulation time 0.087 / 0.5 s, wall time 26 s
+[RunAll]    ... running, simulation time 0.104 / 0.5 s, wall time 31 s
+[RunAll]    ... running, simulation time 0.109 / 0.5 s, wall time 36 s
+[RunAll]    ... running, simulation time 0.113 / 0.5 s, wall time 42 s
+[RunAll]    ... running, simulation time 0.119 / 0.5 s, wall time 47 s
+[RunAll]    ... running, simulation time 0.125 / 0.5 s, wall time 52 s
+[RunAll]    ... running, simulation time 0.131 / 0.5 s, wall time 57 s
+[RunAll]    ... running, simulation time 0.135 / 0.5 s, wall time 62 s
+[RunAll]    ... running, simulation time 0.140 / 0.5 s, wall time 67 s
+[RunAll]    ... running, simulation time 0.145 / 0.5 s, wall time 73 s
+[RunAll]    ... running, simulation time 0.151 / 0.5 s, wall time 78 s
+[RunAll]    ... running, simulation time 0.157 / 0.5 s, wall time 83 s
+[RunAll]    ... running, simulation time 0.163 / 0.5 s, wall time 88 s
+[RunAll]    ... running, simulation time 0.169 / 0.5 s, wall time 93 s
+[RunAll]    ... running, simulation time 0.176 / 0.5 s, wall time 98 s
+[RunAll]    ... running, simulation time 0.182 / 0.5 s, wall time 104 s
+[RunAll]    ... running, simulation time 0.197 / 0.5 s, wall time 109 s
+[RunAll]    ... running, simulation time 0.215 / 0.5 s, wall time 114 s
+[RunAll]    ... running, simulation time 0.236 / 0.5 s, wall time 119 s
+[RunAll]    ... running, simulation time 0.256 / 0.5 s, wall time 124 s
+[RunAll]    ... running, simulation time 0.277 / 0.5 s, wall time 129 s
+[RunAll]    ... running, simulation time 0.298 / 0.5 s, wall time 134 s
+[RunAll]    ... running, simulation time 0.318 / 0.5 s, wall time 139 s
+[RunAll]    ... running, simulation time 0.338 / 0.5 s, wall time 144 s
+[RunAll]    ... running, simulation time 0.357 / 0.5 s, wall time 149 s
+[RunAll]    ... running, simulation time 0.378 / 0.5 s, wall time 154 s
+[RunAll]    ... running, simulation time 0.398 / 0.5 s, wall time 159 s
+[RunAll]    ... running, simulation time 0.418 / 0.5 s, wall time 165 s
+[RunAll]    ... running, simulation time 0.439 / 0.5 s, wall time 170 s
+[RunAll]    ... running, simulation time 0.459 / 0.5 s, wall time 175 s
+[RunAll]    ... running, simulation time 0.479 / 0.5 s, wall time 180 s

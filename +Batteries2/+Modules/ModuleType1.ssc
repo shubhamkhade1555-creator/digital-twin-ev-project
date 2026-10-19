@@ -1,0 +1,148 @@
+component ModuleType1
+    % ModuleType1:2
+    % Module Block
+    %    Model resolution: Detailed
+    %    Number of parallel assemblies: 13
+    %    Number of cells per parallel assembly: 10
+    %
+    %    MATLAB version: 24.2
+    %    Simscape Battery version: 24.2
+    %    Simscape code generated on: 29-Sep-2026 21:36:23
+
+    parameters
+        SOC_vecCell = {[0, .1, .25, .5, .75, .9, 1],'1'}; % Vector of state-of-charge values, SOC
+        SOC_vecCellPercentDeviation = zeros([130 1]); % Percent deviation for SOC_vecCell
+        T_vecCell = {[278, 293, 313],'K'}; % Vector of temperatures, T
+        T_vecCellPercentDeviation = zeros([130 1]); % Percent deviation for T_vecCell
+        V0_matCell = {[3.49, 3.5, 3.51; 3.55, 3.57, 3.56; 3.62, 3.63, 3.64; 3.71, 3.71, 3.72; 3.91, 3.93, 3.94; 4.07, 4.08, 4.08; 4.19, 4.19, 4.19],'V'}; % Open-circuit voltage, V0(SOC,T)
+        V0_matCellPercentDeviation = zeros([130 1]); % Percent deviation for V0_matCell
+        V_rangeCell = {[0, inf],'V'}; % Terminal voltage operating range [Min Max]
+        V_rangeCellPercentDeviation = zeros([130 1]); % Percent deviation for V_rangeCell
+        R0_matCell = {[.0117, .0085, .009; .011, .0085, .009; .0114, .0087, .0092; .0107, .0082, .0088; .0107, .0083, .0091; .0113, .0085, .0089; .0116, .0085, .0089],'Ohm'}; % Terminal resistance, R0(SOC,T)
+        R0_matCellPercentDeviation = zeros([130 1]); % Percent deviation for R0_matCell
+        AHCell = {5,'A*hr'}; % Cell capacity, AH
+        AHCellPercentDeviation = zeros([130 1]); % Percent deviation for AHCell
+        extrapolation_optionCell = {simscape.enum.extrapolation.nearest,'1'}; % Extrapolation method for all tables
+        thermal_massCell = {100,'J/K'}; % Thermal mass
+        thermal_massCellPercentDeviation = zeros([130 1]); % Percent deviation for thermal_massCell
+    end
+
+    parameters(ExternalAccess=none)
+        P = 10; % Batteries in Parallel
+        S = 13; % Batteries in Series
+        CellCount = P*S; % Number of cells in battery
+    end
+
+    outputs
+        socOutCell; % SOC
+    end
+
+    nodes
+        p = foundation.electrical.electrical; % +
+        n = foundation.electrical.electrical; % -
+    end
+
+    variables
+        iCell = {repmat(0,130,1),'A'}; % Cell current (positive in)
+        vCell = {repmat(0,130,1),'V'}; % Cell terminal voltage
+        socCell = {value={repmat(1,130,1),'1'},priority=priority.high}; % Cell state of charge
+        numCyclesCell = {value={repmat(0,130,1),'1'},priority=priority.high}; % Cell discharge cycles
+        temperatureCell = {value={repmat(298.15,130,1),'K'},priority=priority.high}; % Cell temperature
+        vParallelAssembly = {value={repmat(0,13,1),'V'},priority=priority.none}; % Parallel Assembly Voltage
+        socParallelAssembly = {value={repmat(1,13,1),'1'},priority=priority.none}; % Parallel Assembly state of charge
+    end
+
+    equations
+        assert(length(iCell) == CellCount);
+        assert(length(vCell) == CellCount);
+        assert(length(socCell) == CellCount);
+        assert(length(numCyclesCell) == CellCount);
+        assert(length(temperatureCell) == CellCount);
+        assert(length(vParallelAssembly) == S);
+        assert(length(socParallelAssembly) == S);
+        socOutCell == [ParallelAssembly(:).socOutCell];
+        assert(isValidPercentDeviationSize(SOC_vecCellPercentDeviation,SOC_vecCell,S*P),...
+            'Percent deviation for SOC_vecCell must contain a number of vertically concatenated elements equal to the number of cell models. Each element must be a scalar or equal to the size of the underlying parameter.');
+        assert(isValidPercentDeviationSize(T_vecCellPercentDeviation,T_vecCell,S*P),...
+            'Percent deviation for T_vecCell must contain a number of vertically concatenated elements equal to the number of cell models. Each element must be a scalar or equal to the size of the underlying parameter.');
+        assert(isValidPercentDeviationSize(V0_matCellPercentDeviation,V0_matCell,S*P),...
+            'Percent deviation for V0_matCell must contain a number of vertically concatenated elements equal to the number of cell models. Each element must be a scalar or equal to the size of the underlying parameter.');
+        assert(isValidPercentDeviationSize(V_rangeCellPercentDeviation,V_rangeCell,S*P),...
+            'Percent deviation for V_rangeCell must contain a number of vertically concatenated elements equal to the number of cell models. Each element must be a scalar or equal to the size of the underlying parameter.');
+        assert(isValidPercentDeviationSize(R0_matCellPercentDeviation,R0_matCell,S*P),...
+            'Percent deviation for R0_matCell must contain a number of vertically concatenated elements equal to the number of cell models. Each element must be a scalar or equal to the size of the underlying parameter.');
+        assert(isValidPercentDeviationSize(AHCellPercentDeviation,AHCell,S*P),...
+            'Percent deviation for AHCell must contain a number of vertically concatenated elements equal to the number of cell models. Each element must be a scalar or equal to the size of the underlying parameter.');
+        assert(isValidPercentDeviationSize(thermal_massCellPercentDeviation,thermal_massCell,S*P),...
+            'Percent deviation for thermal_massCell must contain a number of vertically concatenated elements equal to the number of cell models. Each element must be a scalar or equal to the size of the underlying parameter.');
+    end
+
+    connections
+        connect(p,ParallelAssembly(1).p);
+        connect(n,ParallelAssembly(end).n);
+    end
+
+    annotations
+        [p] : Side=top;
+        [n] : Side=bottom;
+        UILayout = [UIGroup("Main",SOC_vecCell,SOC_vecCellPercentDeviation,T_vecCell,T_vecCellPercentDeviation,V0_matCell,V0_matCellPercentDeviation,V_rangeCell,V_rangeCellPercentDeviation,R0_matCell,R0_matCellPercentDeviation,AHCell,AHCellPercentDeviation,extrapolation_optionCell),...
+            UIGroup("Thermal",thermal_massCell,thermal_massCellPercentDeviation)];
+        Icon = 'module.svg';
+    end
+
+    for Sidx = 1:S
+        components(ExternalAccess=observe,CompileReuse=true)
+            ParallelAssembly(Sidx) = Batteries2.ParallelAssemblies.ParallelAssemblyType1(...
+                P = P,SOC_vecCell = SOC_vecCell,T_vecCell = T_vecCell,...
+                V0_matCell = V0_matCell,V_rangeCell = V_rangeCell,R0_matCell = R0_matCell,...
+                AHCell = AHCell,extrapolation_optionCell = extrapolation_optionCell,...
+                thermal_massCell = thermal_massCell,...
+                SOC_vecCellPercentDeviation = indexParameterDeviation(SOC_vecCellPercentDeviation,S,Sidx),...
+                T_vecCellPercentDeviation = indexParameterDeviation(T_vecCellPercentDeviation,S,Sidx),...
+                V0_matCellPercentDeviation = indexParameterDeviation(V0_matCellPercentDeviation,S,Sidx),...
+                V_rangeCellPercentDeviation = indexParameterDeviation(V_rangeCellPercentDeviation,S,Sidx),...
+                R0_matCellPercentDeviation = indexParameterDeviation(R0_matCellPercentDeviation,S,Sidx),...
+                AHCellPercentDeviation = indexParameterDeviation(AHCellPercentDeviation,S,Sidx),...
+                thermal_massCellPercentDeviation = indexParameterDeviation(thermal_massCellPercentDeviation,S,Sidx),iCell.priority = priority.none,vCell.priority = priority.none,...
+                socCell.priority = priority.none,numCyclesCell.priority = priority.none,...
+                temperatureCell.priority = priority.none,...
+                vParallelAssembly.priority = priority.none,socParallelAssembly.priority = priority.none);
+        end
+    end
+
+    for Sidx = 1:S-1
+        connections
+            connect(ParallelAssembly(Sidx).n,ParallelAssembly(Sidx+1).p);
+        end
+    end
+
+    for Sidx = 1:S
+        equations
+            ParallelAssembly(Sidx).iCell == reshape(iCell((Sidx*P-(P-1)):(Sidx*P)),P,1);
+            ParallelAssembly(Sidx).vCell == reshape(vCell((Sidx*P-(P-1)):(Sidx*P)),P,1);
+            ParallelAssembly(Sidx).socCell == reshape(socCell((Sidx*P-(P-1)):(Sidx*P)),P,1);
+            ParallelAssembly(Sidx).numCyclesCell == reshape(numCyclesCell((Sidx*P-(P-1)):(Sidx*P)),P,1);
+            ParallelAssembly(Sidx).temperatureCell == reshape(temperatureCell((Sidx*P-(P-1)):(Sidx*P)),P,1);
+            ParallelAssembly(Sidx).vParallelAssembly == vParallelAssembly(Sidx);
+            ParallelAssembly(Sidx).socParallelAssembly == socParallelAssembly(Sidx);
+        end
+    end
+end
+
+function indexedParameterDeviation = indexParameterDeviation(parameterDeviation,s,sIndex)
+    definitions
+        parameterDeviationSize=size(parameterDeviation);
+        moduleParameterDeviation=parameterDeviation(parameterDeviationSize(1) / s * (sIndex - 1) + 1 : parameterDeviationSize(1) / s * sIndex,:);
+        indexedParameterDeviation=reshape(moduleParameterDeviation,[parameterDeviationSize(1) / s, parameterDeviationSize(2:end)]);
+    end
+end
+
+function isValidSize = isValidPercentDeviationSize(percentDeviation,parameter,totalNumModels)
+    definitions
+        percentDeviationSize=size(percentDeviation);
+        parameterSize=size(parameter);
+        isScalarPercentDeviation=isequal(percentDeviationSize,[totalNumModels,1]);
+        isTrueToSizePercentDeviation=isequal(percentDeviationSize,[parameterSize(1) * totalNumModels,parameterSize(2:end)]);
+        isValidSize=isScalarPercentDeviation||isTrueToSizePercentDeviation;
+    end
+end

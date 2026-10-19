@@ -1,0 +1,186 @@
+
+==============================================================
+  EV DIGITAL TWIN - RunAll   15-Oct-2026 01:24:06
+==============================================================
+[RunAll] 1. Project folder (auto-detected): C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+[RunAll]    MATLAB path set (project + sub-folders, run archives excluded).
+[RunAll]    Log file: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\RunAll_20261015_012406.txt
+[RunAll] 2. Checking files ...
+[RunAll]    FOUND              BLDCSpeedControl_EV_Layout_v2.slx
+[RunAll]    FOUND              BLDCSpeedControlData.m
+[RunAll]    FOUND              BLDCSpeedControlInput.mat
+[RunAll]    FOUND              Batteries2_lib.slx
+[RunAll]    FOUND              EV_DAQ_Builder_V7.m
+[RunAll]    FOUND              Batteries2.slx
+[RunAll]    [PASS] Required files                         all found
+[RunAll] 3. Checking MATLAB ...
+[RunAll]    MATLAB 2024b on PCWIN64
+[RunAll]    [WARN] MATLAB release                         2024b (project was built in R2024b - the model may not open in an older release)
+[RunAll]    product ok      : Simulink
+[RunAll]    product ok      : Simscape
+[RunAll]    product ok      : Simscape Electrical
+[RunAll]    product ok      : Simscape Battery
+[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...
+[RunAll]    Stop Time taken from the Simulink toolbar: 0.5 s (parameter file default 0.5 s is ignored)
+[RunAll]    rpm_ref=2950 rpm  I_cont=30 A  I_peak=45 A  Kt=0.107 N*m/A  t_stop=0.5 s  pack=50 Ah
+[RunAll] 5. Loading models ...
+[RunAll]    closed the old copy of BLDCSpeedControl_EV_Layout_v2 (reload from disk).
+[RunAll]    model Stop Time set to 0.5 s after the reload.
+[RunAll] 6a. Model fix: buck snubber -> exclude ...
+[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...
+[RunAll]    [PASS] DAQ setup                              model loaded, Black Box built, hooks written, model saved
+[RunAll]    Stop Time of the model for this run: 0.5 s
+[RunAll] 7. Separate compile check skipped (the simulation start compiles the model once; use RunAll('Compile',true) to force it).
+[RunAll] 8. Starting simulation (t_stop = 0.5 s). [LIVE] lines follow ...
+--------------------------------------------------------------
+[RunAll]    ... running, simulation time 0.000 / 0.5 s, wall time 9 s
+[RunAll]    ... running, simulation time 0.005 / 0.5 s, wall time 14 s
+[RunAll]    ... running, simulation time 0.010 / 0.5 s, wall time 19 s
+[RunAll]    ... running, simulation time 0.014 / 0.5 s, wall time 25 s
+[RunAll]    ... running, simulation time 0.018 / 0.5 s, wall time 30 s
+[RunAll]    ... running, simulation time 0.023 / 0.5 s, wall time 35 s
+[RunAll]    ... running, simulation time 0.028 / 0.5 s, wall time 40 s
+[RunAll]    ... running, simulation time 0.033 / 0.5 s, wall time 45 s
+[RunAll]    ... running, simulation time 0.037 / 0.5 s, wall time 50 s
+[RunAll]    ... running, simulation time 0.041 / 0.5 s, wall time 55 s
+[RunAll]    ... running, simulation time 0.045 / 0.5 s, wall time 60 s
+[RunAll]    ... running, simulation time 0.049 / 0.5 s, wall time 66 s
+[RunAll]    ... running, simulation time 0.054 / 0.5 s, wall time 71 s
+[RunAll]    ... running, simulation time 0.058 / 0.5 s, wall time 76 s
+[RunAll]    ... running, simulation time 0.062 / 0.5 s, wall time 81 s
+[RunAll]    ... running, simulation time 0.067 / 0.5 s, wall time 86 s
+[RunAll]    ... running, simulation time 0.072 / 0.5 s, wall time 91 s
+[RunAll]    ... running, simulation time 0.076 / 0.5 s, wall time 96 s
+[RunAll]    ... running, simulation time 0.080 / 0.5 s, wall time 102 s
+[RunAll]    ... running, simulation time 0.084 / 0.5 s, wall time 107 s
+[RunAll]    ... running, simulation time 0.088 / 0.5 s, wall time 112 s
+[RunAll]    ... running, simulation time 0.091 / 0.5 s, wall time 117 s
+[RunAll]    ... running, simulation time 0.095 / 0.5 s, wall time 122 s
+[RunAll]    ... running, simulation time 0.101 / 0.5 s, wall time 127 s
+[RunAll]    ... running, simulation time 0.106 / 0.5 s, wall time 132 s
+[RunAll]    ... running, simulation time 0.110 / 0.5 s, wall time 137 s
+[RunAll]    ... running, simulation time 0.115 / 0.5 s, wall time 143 s
+[RunAll]    ... running, simulation time 0.120 / 0.5 s, wall time 148 s
+[RunAll]    ... running, simulation time 0.125 / 0.5 s, wall time 153 s
+[RunAll]    ... running, simulation time 0.130 / 0.5 s, wall time 158 s
+[RunAll]    ... running, simulation time 0.134 / 0.5 s, wall time 163 s
+[RunAll]    ... running, simulation time 0.139 / 0.5 s, wall time 168 s
+[RunAll]    ... running, simulation time 0.143 / 0.5 s, wall time 174 s
+[RunAll]    ... running, simulation time 0.148 / 0.5 s, wall time 179 s
+[RunAll]    ... running, simulation time 0.153 / 0.5 s, wall time 184 s
+[RunAll]    ... running, simulation time 0.157 / 0.5 s, wall time 189 s
+[RunAll]    ... running, simulation time 0.162 / 0.5 s, wall time 194 s
+[RunAll]    ... running, simulation time 0.167 / 0.5 s, wall time 199 s
+[RunAll]    ... running, simulation time 0.171 / 0.5 s, wall time 204 s
+[RunAll]    ... running, simulation time 0.176 / 0.5 s, wall time 209 s
+[RunAll]    ... running, simulation time 0.180 / 0.5 s, wall time 215 s
+[RunAll]    ... running, simulation time 0.185 / 0.5 s, wall time 220 s
+[RunAll]    ... running, simulation time 0.189 / 0.5 s, wall time 225 s
+[RunAll]    ... running, simulation time 0.193 / 0.5 s, wall time 230 s
+[RunAll]    ... running, simulation time 0.197 / 0.5 s, wall time 235 s
+[RunAll]    ... running, simulation time 0.202 / 0.5 s, wall time 240 s
+[RunAll]    ... running, simulation time 0.206 / 0.5 s, wall time 246 s
+[RunAll]    ... running, simulation time 0.211 / 0.5 s, wall time 251 s
+[RunAll]    ... running, simulation time 0.215 / 0.5 s, wall time 256 s
+[RunAll]    ... running, simulation time 0.219 / 0.5 s, wall time 261 s
+[RunAll]    ... running, simulation time 0.223 / 0.5 s, wall time 266 s
+[RunAll]    ... running, simulation time 0.227 / 0.5 s, wall time 271 s
+[RunAll]    ... running, simulation time 0.231 / 0.5 s, wall time 276 s
+[RunAll]    ... running, simulation time 0.235 / 0.5 s, wall time 281 s
+[RunAll]    ... running, simulation time 0.239 / 0.5 s, wall time 287 s
+[RunAll]    ... running, simulation time 0.244 / 0.5 s, wall time 292 s
+[RunAll]    ... running, simulation time 0.247 / 0.5 s, wall time 297 s
+[RunAll]    ... running, simulation time 0.251 / 0.5 s, wall time 302 s
+[RunAll]    ... running, simulation time 0.254 / 0.5 s, wall time 307 s
+[RunAll]    ... running, simulation time 0.257 / 0.5 s, wall time 312 s
+[RunAll]    ... running, simulation time 0.261 / 0.5 s, wall time 318 s
+[RunAll]    ... running, simulation time 0.263 / 0.5 s, wall time 323 s
+[RunAll]    ... running, simulation time 0.266 / 0.5 s, wall time 328 s
+[RunAll]    ... running, simulation time 0.267 / 0.5 s, wall time 333 s
+[RunAll]    ... running, simulation time 0.267 / 0.5 s, wall time 338 s
+[RunAll]    ... running, simulation time 0.268 / 0.5 s, wall time 344 s
+[RunAll]    ... running, simulation time 0.269 / 0.5 s, wall time 349 s
+[RunAll]    ... running, simulation time 0.269 / 0.5 s, wall time 354 s
+[RunAll]    ... running, simulation time 0.270 / 0.5 s, wall time 360 s
+[RunAll]    ... running, simulation time 0.271 / 0.5 s, wall time 365 s
+[RunAll]    ... running, simulation time 0.272 / 0.5 s, wall time 370 s
+[RunAll]    ... running, simulation time 0.272 / 0.5 s, wall time 376 s
+[RunAll]    ... running, simulation time 0.273 / 0.5 s, wall time 381 s
+[RunAll]    ... running, simulation time 0.273 / 0.5 s, wall time 387 s
+[RunAll]    ... running, simulation time 0.273 / 0.5 s, wall time 393 s
+[RunAll]    ... running, simulation time 0.274 / 0.5 s, wall time 398 s
+[RunAll]    ... running, simulation time 0.275 / 0.5 s, wall time 404 s
+[RunAll]    ... running, simulation time 0.275 / 0.5 s, wall time 409 s
+[RunAll]    ... running, simulation time 0.275 / 0.5 s, wall time 415 s
+[RunAll]    ... running, simulation time 0.275 / 0.5 s, wall time 420 s
+[RunAll]    ... running, simulation time 0.275 / 0.5 s, wall time 425 s
+[RunAll]    ... running, simulation time 0.276 / 0.5 s, wall time 430 s
+[RunAll]    ... running, simulation time 0.276 / 0.5 s, wall time 437 s
+[RunAll]    ... running, simulation time 0.276 / 0.5 s, wall time 443 s
+[RunAll]    ... running, simulation time 0.276 / 0.5 s, wall time 449 s
+[RunAll]    ... running, simulation time 0.276 / 0.5 s, wall time 454 s
+[RunAll]    ... running, simulation time 0.276 / 0.5 s, wall time 460 s
+[RunAll]    ... running, simulation time 0.276 / 0.5 s, wall time 465 s
+[RunAll]    ... running, simulation time 0.277 / 0.5 s, wall time 471 s
+[RunAll]    ... running, simulation time 0.277 / 0.5 s, wall time 477 s
+[RunAll]    ... running, simulation time 0.277 / 0.5 s, wall time 482 s
+[RunAll]    ... running, simulation time 0.277 / 0.5 s, wall time 490 s
+[RunAll]    ... running, simulation time 0.277 / 0.5 s, wall time 496 s
+[RunAll]    ... running, simulation time 0.278 / 0.5 s, wall time 502 s
+[RunAll]    ... running, simulation time 0.278 / 0.5 s, wall time 508 s
+[RunAll]    ... running, simulation time 0.278 / 0.5 s, wall time 514 s
+[RunAll]    ... running, simulation time 0.278 / 0.5 s, wall time 519 s
+[RunAll]    ... running, simulation time 0.279 / 0.5 s, wall time 524 s
+[RunAll]    ... running, simulation time 0.286 / 0.5 s, wall time 530 s
+[RunAll]    ... running, simulation time 0.293 / 0.5 s, wall time 535 s
+[RunAll]    ... running, simulation time 0.304 / 0.5 s, wall time 540 s
+[RunAll]    ... running, simulation time 0.312 / 0.5 s, wall time 545 s
+[RunAll]    ... running, simulation time 0.320 / 0.5 s, wall time 550 s
+[RunAll]    ... running, simulation time 0.328 / 0.5 s, wall time 555 s
+[RunAll]    ... running, simulation time 0.339 / 0.5 s, wall time 560 s
+[RunAll]    ... running, simulation time 0.348 / 0.5 s, wall time 565 s
+[RunAll]    ... running, simulation time 0.356 / 0.5 s, wall time 570 s
+[RunAll]    ... running, simulation time 0.366 / 0.5 s, wall time 575 s
+[RunAll]    ... running, simulation time 0.377 / 0.5 s, wall time 580 s
+[RunAll]    ... running, simulation time 0.389 / 0.5 s, wall time 585 s
+[RunAll]    ... running, simulation time 0.396 / 0.5 s, wall time 591 s
+[RunAll]    ... running, simulation time 0.402 / 0.5 s, wall time 596 s
+[RunAll]    ... running, simulation time 0.410 / 0.5 s, wall time 601 s
+[RunAll]    ... running, simulation time 0.415 / 0.5 s, wall time 606 s
+[RunAll]    ... running, simulation time 0.421 / 0.5 s, wall time 611 s
+[RunAll]    ... running, simulation time 0.429 / 0.5 s, wall time 616 s
+[RunAll]    ... running, simulation time 0.437 / 0.5 s, wall time 621 s
+[RunAll]    ... running, simulation time 0.446 / 0.5 s, wall time 626 s
+[RunAll]    ... running, simulation time 0.454 / 0.5 s, wall time 631 s
+[RunAll]    ... running, simulation time 0.464 / 0.5 s, wall time 636 s
+[RunAll]    ... running, simulation time 0.473 / 0.5 s, wall time 641 s
+[RunAll]    ... running, simulation time 0.482 / 0.5 s, wall time 646 s
+[RunAll]    ... running, simulation time 0.490 / 0.5 s, wall time 652 s
+[RunAll]    ... running, simulation time 0.499 / 0.5 s, wall time 657 s
+--------------------------------------------------------------
+[RunAll]    simulation finished after 673 s wall time.
+[RunAll]    [PASS] Simulation run                         finished in 673 s
+[RunAll]    data archive: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261015_013639
+[RunAll] 9. Verifying the result ...
+[RunAll]    [PASS] Black Box size                         501 x 8 (expected 501 or 502 x 8, 1 ms)
+[RunAll]    [PASS] Black Box NaN                          0 NaN values
+[RunAll]    [PASS] Reached t_stop                         last time = 0.5000 s
+[RunAll]    [PASS] Initial state                          SOC=1.00000  rpm=0.0  Vbatt=54.47 V
+[RunAll]    [PASS] Final speed (2900-3000 rpm)            2949.9 rpm (target 2950)
+[RunAll]    [PASS] Torque per amp (Kt)                    0.1044 N*m/A (datasheet 0.107, +/-5%)
+[RunAll]    [PASS] Peak motor current                     max 33.2 A (I_peak 45 A)
+[RunAll]    [WARN] Motor current vs I_cont                mean of last 20 ms = 30.4 A (I_cont 30 A; run is short, load only reached 3.18 Nm at 0.28 s)
+[RunAll]    [PASS] SOC vs coulomb count                   SOC drop 4.83e-05, expected 4.71e-05 (ratio 1.03)
+[RunAll]    [PASS] BlackBox vs archive: motor current     -0.01 %
+[RunAll]    [PASS] BlackBox vs archive: battery voltage   -0.038 V
+[RunAll]    [PASS] BlackBox vs archive: RPM               -0.000 %
+[RunAll]    [PASS] BlackBox vs archive: battery current   -1.5 %  (BB -22.51 A, archive -22.85 A; ripple std BB 0.69 A, archive 0.69 A)
+[RunAll]    [WARN] Power balance (Black Box)              Pdc/Pbatt = 1.114 (expected 0.85-1.02)
+[RunAll]    [WARN] Power balance (archive)                Pdc/Pbatt = 1.097 (expected 0.85-1.02)
+
+==============================================================
+  SUMMARY   PASS 15   WARN 4   FAIL 0     (767 s)
+  RESULT: OK, with 4 warning(s) - read the WARN lines above
+  Data archive : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261015_013639
+  RunAll log   : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\RunAll_20261015_012406.txt
+==============================================================

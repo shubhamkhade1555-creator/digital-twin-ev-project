@@ -1,0 +1,57 @@
+
+╔══════════════════════════════════════════════════════════════════╗
+║  EV DIGITAL TWIN - Full Error-Hardened Benchmark                ║
+║  17-Oct-2026 02:18:07                                    ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Runs: 1x(5µs)  2x(10µs)  4x(20µs)  ~8-10x(50µs)             ║
+║  Every error is caught - script never crashes                   ║
+╚══════════════════════════════════════════════════════════════════╝
+  Project : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+  Log txt : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_FullBenchmark_20261017_021807.txt
+  Log mat : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_FullBenchmark_20261017_021807.mat
+  Log csv : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_FullBenchmark_20261017_021807.csv
+
+══════════════════════════════════════════════════════════════════
+  PRE-FLIGHT CHECKS
+══════════════════════════════════════════════════════════════════
+[PRE] 1. Required files ...
+[PRE]    OK       BLDCSpeedControl_EV_Layout_v2.slx  (Main Simulink model)
+[PRE]    OK       BLDCSpeedControlData.m  (Parameter file)
+[PRE]    OK       BLDCSpeedControlInput.mat  (Signal Editor input)
+[PRE]    OK       Batteries2_lib.slx  (Battery library)
+[PRE]    OK       EV_DAQ_Builder_V7.m  (DAQ builder)
+[PRE]    OK       RunAll.m  (One-click runner)
+[PRE]    OK       Batteries2.slx  (Battery example (optional))
+[PRE] 2. MATLAB release ...
+[PRE]    WARN  MATLAB 2024b (project built in R2024b - may have compatibility issues)
+[PRE] 3. Toolbox check ...
+[PRE]    OK   Simulink
+[PRE]    OK   Simscape
+[PRE]    OK   Simscape Electrical
+[PRE]    OK   Simscape Battery
+[PRE] 4. Ts divisibility (Tsc = 1e-4 must be integer multiple of each Ts) ...
+[PRE]    OK   Ts=5e-06 s  -> Tsc/Ts = 20 (integer)
+[PRE]    OK   Ts=1e-05 s  -> Tsc/Ts = 10 (integer)
+[PRE]    OK   Ts=2e-05 s  -> Tsc/Ts = 5 (integer)
+[PRE]    OK   Ts=5e-05 s  -> Tsc/Ts = 2 (integer)
+[PRE] 5. Model simulation status ...
+[PRE]    OK  model not loaded yet (will be loaded per run).
+[PRE] 6. Disk space ...
+[PRE]    OK  43.1 GB free
+[PRE] 7. Parameter file dry-run ...
+[PRE]    OK  rpm_ref=2950  I_cont=30  I_peak=45  t_stop=0.3  pack=50 Ah
+[PRE] 8. RunAll callable check ...
+[PRE]    OK  RunAll.m found on MATLAB path.
+[PRE] 9. Cluster profiles warning ...
+[PRE]    INFO: "The list of cluster profiles failed to load" is a cosmetic MATLAB
+[PRE]         warning about Parallel Computing Toolbox - it does NOT affect this simulation.
+[PRE]         Safe to ignore.
+
+[PRE]  ALL PRE-FLIGHT CHECKS PASSED - starting benchmark runs.
+
+══════════════════════════════════════════════════════════════════
+  RUN 1 of 4   Ts = 5e-06 s   (1x (baseline 5 µs))
+  Started: 17-Oct-2026 02:18:07
+══════════════════════════════════════════════════════════════════
+[Run1] Ts_override = 5e-06 set in base workspace.
+[Run1] Stale workspace results cleared.

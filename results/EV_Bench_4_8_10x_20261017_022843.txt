@@ -1,0 +1,77 @@
+╔═══════════════════════════════════════════════════════╗
+║  EV Benchmark: 4x  ~8x  10x   t_stop = 3 s          ║
+║  17-Oct-2026 02:28:43                              ║
+╚═══════════════════════════════════════════════════════╝
+  Folder : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+  t_stop : 3.0 s (forced for all runs)
+  Log    : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_Bench_4_8_10x_20261017_022843.txt
+
+  Ts validity check (Tsc = 1e-4 s):
+    2e-5 -> Tsc/Ts = 5.0  VALID (integer)
+    4e-5 -> Tsc/Ts = 2.5  INVALID (not integer)  <-- INVALID, skipped
+    5e-5 -> Tsc/Ts = 2.0  VALID (integer)
+
+  rpm_ref = 2950 rpm
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUN 1 of 3 : 4x  faster (Ts=2e-5 s)
+  Note: 4x:  2e-5 = 4*5e-6, Tsc/Ts=5 OK
+  Ts = 2e-05 s   t_stop = 3.0 s   Start: 17-Oct-2026 02:28:43
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[1] Ts_override = 2e-05 set.
+[1] t_stop = 3.0 s set in workspace.
+[1] Old model closed.
+[1] RunAll done in 68.1 s wall time.
+[1] ERROR reading BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+[1] VERDICT: ERROR   PASS=2 WARN=1 FAIL=1
+[1] Errors this run (1):
+[1]  [!1] BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUN 2 of 3 : ~8x faster (Ts=5e-5 s)
+  Note: 8x:  4e-5 invalid (Tsc/4e-5=2.5), using 5e-5 (10x nearest valid)
+  Ts = 5e-05 s   t_stop = 3.0 s   Start: 17-Oct-2026 02:30:01
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2] Ts_override = 5e-05 set.
+[2] t_stop = 3.0 s set in workspace.
+[2] Old model closed.
+[2] RunAll done in 65.0 s wall time.
+[2] ERROR reading BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+[2] VERDICT: ERROR   PASS=2 WARN=1 FAIL=1
+[2] Errors this run (1):
+[2]  [!1] BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUN 3 of 3 : 10x faster (Ts=5e-5 s)
+  Note: 10x: 5e-5 = 10*5e-6, Tsc/Ts=2 OK (repeat of ~8x to confirm)
+  Ts = 5e-05 s   t_stop = 3.0 s   Start: 17-Oct-2026 02:31:06
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[3] Ts_override = 5e-05 set.
+[3] t_stop = 3.0 s set in workspace.
+[3] Old model closed.
+[3] RunAll done in 64.4 s wall time.
+[3] ERROR reading BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+[3] VERDICT: ERROR   PASS=2 WARN=1 FAIL=1
+[3] Errors this run (1):
+[3]  [!1] BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+
+╔═══════════════════════════════════════════════════════╗
+║  RESULTS SUMMARY  (t_stop = 3.0 s each run)          ║
+╚═══════════════════════════════════════════════════════╝
+
+  Run                          Ts[s]  Wall[s]   RPM_end      I[A]      V[V]     P    W    F  VERDICT
+  ----------------------------------------------------------------------------------------------------
+  4x  faster (Ts=2e-5 s)       2e-05     68.1       0.0      0.00     0.000     2    1    1  ERROR
+  ~8x faster (Ts=5e-5 s)       5e-05     65.0       0.0      0.00     0.000     2    1    1  ERROR
+  10x faster (Ts=5e-5 s)       5e-05     64.4       0.0      0.00     0.000     2    1    1  ERROR
+  ----------------------------------------------------------------------------------------------------
+
+  RESULT: No run passed. Check FAIL lines in the log above.
+
+  MAT: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_Bench_4_8_10x_20261017_022843.mat
+  CSV: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_Bench_4_8_10x_20261017_022843.csv
+  TXT: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_Bench_4_8_10x_20261017_022843.txt
+
+╔═══════════════════════════════════════════════════════╗
+║  EV_Bench_4_8_10x COMPLETE                           ║
+╚═══════════════════════════════════════════════════════╝

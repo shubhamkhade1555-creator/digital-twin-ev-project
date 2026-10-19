@@ -1,0 +1,4 @@
+Label,Ts_s,Wall_s,RPM_end,I_end_A,V_end_V,RunAll_PASS,RunAll_WARN,RunAll_FAIL,Verdict
+4x  faster (Ts=2e-5),2e-05,62.6094513,NaN,NaN,NaN,2,1,1,ERROR
+~8x faster (Ts=5e-5),5e-05,62.6646201,NaN,NaN,NaN,2,1,1,ERROR
+10x faster (Ts=5e-5),5e-05,65.3544562,NaN,NaN,NaN,2,1,1,ERROR

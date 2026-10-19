@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EV Digital Twin – Live Simulation Dashboard</title>
+<style>
+:root{--bg:#0b1020;--card:#131a2e;--card2:#0f1526;--line:#243049;--txt:#e6ebf5;--mut:#8b97b3;--ok:#2ecc8f;--warn:#f5b83d;--bad:#ff5d6c;--acc:#5b9dff;--acc2:#b07cff}
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden}
+body{background:radial-gradient(1200px 600px at 10% -10%,#16224a,transparent),var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{display:grid;grid-template-rows:auto auto minmax(0,1fr);height:100vh;height:100dvh}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--line)}
+h1{font-size:17px;margin:0}h1 span{color:var(--acc)}small,.mut{color:var(--mut)}
+nav{display:flex;gap:4px;padding:6px 18px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{background:transparent;border:1px solid transparent;color:var(--mut);padding:6px 14px;white-space:nowrap}
+nav button:hover{color:var(--txt)}nav button.on{background:#1b2542;border-color:var(--acc);color:var(--txt)}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600;border:1px solid}
+.PASS{color:var(--ok);border-color:#2ecc8f55;background:#2ecc8f14}.WARN{color:var(--warn);border-color:#f5b83d55;background:#f5b83d14}.FAIL{color:var(--bad);border-color:#ff5d6c55;background:#ff5d6c14}.idle,.SKIP{color:var(--mut);border-color:var(--line)}
+main{padding:10px 18px;min-height:0}
+.tab{display:none;height:100%;min-height:0}.tab.on{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-height:0}
+.card h2{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+.full{flex:1;display:flex;flex-direction:column}.scr{overflow:auto;min-height:0;flex:1}
+.dash{display:grid;grid-template-columns:270px minmax(0,1fr);gap:10px;height:100%;min-height:0}
+.ctl{overflow:auto}.rt{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px}.kpi b{display:inline;font-size:20px;font-variant-numeric:tabular-nums}.kpi i{font-style:normal;font-size:11px;color:var(--mut)}.kpi>i:first-child{display:block}
+.charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;min-height:0}
+.ch{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;min-height:0;min-width:0}
+.ch h3{margin:0 0 2px;font-size:12px;display:flex;justify-content:space-between;gap:6px}.ch h3 small{font-size:11px;white-space:nowrap}
+.cw{position:relative;flex:1;min-height:0}canvas{position:absolute;inset:0;width:100%;height:100%}
+label{display:block;font-size:11px;color:var(--mut);margin:6px 0 2px}
+input,select{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);padding:5px 8px;border-radius:7px;font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{cursor:pointer;border:1px solid var(--line);background:#1b2542;color:var(--txt);padding:7px 12px;border-radius:8px;font:inherit;font-weight:600}
+button:hover{border-color:var(--acc)}button.p{background:linear-gradient(135deg,#3b7cff,#7b5cff);border:0}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.btns button{padding:6px 10px;font-size:12px}
+.bar{height:5px;background:var(--card2);border-radius:9px;overflow:hidden;margin-top:10px}.bar div{height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--mut);font-weight:600;position:sticky;top:0;background:var(--card)}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:10px}.info div{background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:6px 10px}.info b{display:block;font-size:16px}
+.pg{display:flex;gap:8px;align-items:center;margin-bottom:8px}.pg select{width:auto}
+.abt p{margin:0 0 8px;max-width:900px}
+#toasts{position:fixed;right:18px;bottom:18px;display:grid;gap:10px;z-index:20;max-width:360px}
+.toast{background:#1a223c;border:1px solid var(--line);border-left:4px solid var(--warn);padding:10px 14px;border-radius:10px;box-shadow:0 8px 30px #0008;animation:in .25s}.toast.bad{border-left-color:var(--bad)}.toast.good{border-left-color:var(--ok)}
+@keyframes in{from{transform:translateY(12px);opacity:0}}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:30;padding:20px}
+#modal .box{background:var(--card);border:1px solid var(--bad);border-radius:16px;max-width:560px;width:100%;padding:22px;box-shadow:0 20px 60px #000c}
+#modal h2{margin:0 0 6px;color:var(--bad);font-size:18px;text-transform:none;letter-spacing:0}#modal ul{padding-left:18px;margin:10px 0 16px}#modal.w .box{border-color:var(--warn)}#modal.w h2{color:var(--warn)}
+@media(max-width:900px){html,body{overflow:auto}#app{height:auto}.dash{grid-template-columns:1fr;height:auto}.kpis{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr;grid-template-rows:none}.ch{height:220px}.tab{height:auto}}
+</style></head><body>
+<div id="app">
+<header><div><h1>⚡ EV <span>Digital Twin</span> – Simulation Dashboard</h1><small>BLDC APBA80L048030-EB · 13S10P battery · target 2950 rpm</small></div>
+<div><span id="status" class="pill idle">IDLE</span> <span id="clock" class="mut"></span></div></header>
+<nav id="nav"><button data-t="dash" class="on">Dashboard</button><button data-t="chk">Checks</button><button data-t="stat">Statistics</button><button data-t="smp">Samples</button><button data-t="his">Run history</button><button data-t="std">Standards</button><button data-t="abt">About</button></nav>
+<main>
+<section class="tab on" id="t_dash"><div class="dash">
+ <div class="card ctl"><h2>Simulation control</h2>
+  <div class="row"><div><label>Target speed [rpm]</label><input id="rpmRef" type="number" value="2950"></div><div><label>Ramp [rpm/s]</label><input id="ramp" type="number" value="13000"></div></div>
+  <div class="row"><div><label>Load scale (1 = 3.18 Nm)</label><input id="load" type="number" step="0.1" value="1"></div><div><label>I_peak limit [A]</label><input id="ipeak" type="number" value="45"></div></div>
+  <div class="row"><div><label>Stop time [s]</label><input id="tstop" type="number" step="0.05" value="0.3"></div><div><label>Playback time</label><select id="spd"><option value="3">Fast – 3 s</option><option value="60">1 min</option><option value="120" selected>2 min (Simulink-like)</option><option value="180">3 min (MATLAB 0.3 s)</option></select></div></div>
+  <div class="btns"><button class="p" id="run">▶ Run simulation</button><button id="stop">■ Stop</button></div>
+  <div class="btns"><button id="fault">Fault test: overload</button><button id="nom">Nominal</button></div>
+  <div class="btns"><button id="imp">Import CSV</button><button id="exp">Export CSV</button><input id="file" type="file" accept=".csv" hidden></div>
+  <div class="bar"><div id="prog"></div></div><small id="ptxt">Ready. Sim time 0.000 s</small>
+ </div>
+ <div class="rt"><div class="kpis" id="kpis"></div><div class="charts" id="charts"></div></div>
+</div></section>
+<section class="tab" id="t_chk"><div class="card full"><h2>Run checks &nbsp;<span id="sum" class="pill idle">no run</span></h2><div class="scr">
+ <table><thead><tr><th>Check</th><th>Rule</th><th>Value</th><th>Result</th></tr></thead><tbody id="checks"><tr><td colspan="4" class="mut">Run a simulation to see the checks.</td></tr></tbody></table></div></div></section>
+<section class="tab" id="t_stat"><div class="card full"><h2>Run summary and signal statistics</h2><div class="scr"><div class="info" id="sumInfo"><span class="mut">Run a simulation first.</span></div>
+ <table><thead><tr><th>Signal</th><th>Key</th><th>Unit</th><th>Min</th><th>Max</th><th>Mean</th><th>Final</th></tr></thead><tbody id="stbody"></tbody></table></div></div></section>
+<section class="tab" id="t_smp"><div class="card full"><h2>Raw samples of the selected run</h2>
+ <div class="pg"><label style="margin:0">Row step</label><select id="step"><option value="1">1 ms</option><option value="5">5 ms</option><option value="10" selected>10 ms</option><option value="50">50 ms</option></select><button id="pv">◀ Prev</button><button id="nx">Next ▶</button><span id="pgl" class="mut"></span></div>
+ <div class="scr"><table><thead id="smh"></thead><tbody id="smb"><tr><td class="mut">Run a simulation first.</td></tr></tbody></table></div></div></section>
+<section class="tab" id="t_his"><div class="card full"><h2>Run history (saved on the server, includes runs pushed from MATLAB)</h2><div class="scr">
+ <table><thead><tr><th>#</th><th>Date / time</th><th>Setup</th><th>Final rpm</th><th>Peak A</th><th>Result</th><th></th></tr></thead><tbody id="hist"></tbody></table></div></div></section>
+<section class="tab" id="t_std"><div class="card full"><h2>Standard characteristics</h2><div class="scr"><table id="std"></table></div></div></section>
+<section class="tab" id="t_abt"><div class="card full abt"><h2>About this twin</h2><div class="scr">
+ <p><b>Data source.</b> The built-in run is a reduced-order replica written from your parameter file (Kt, limits, inertia, gear ratio, ramp, load profile, battery window). It is not the Simulink output.</p>
+ <p><b>Assumptions of the replica.</b> Motor resistance 0.2 Ω, inductance 0.2 mH, back-EMF constant = Kt, converter efficiency 97 %, battery voltage linear in SOC, small friction, current limiter as a simple clamp.</p>
+ <p><b>Real data.</b> Use Import CSV (columns Vbatt_V, Ibatt_A, SOC, RPM_rpm, Idc_f_A, Vdc_m_V, omega_wheel, Torque_Nm) or push_to_website.m from MATLAB. Pushed runs appear in Run history.</p>
+ <p><b>Checks.</b> Same rules as RunAll step 9. FAIL opens a system-alert popup; WARN opens a warning popup.</p></div></div></section>
+</main></div>
+<div id="toasts"></div>
+<div id="modal"><div class="box"><h2 id="mt"></h2><div id="mb"></div><button class="p" onclick="modal.style.display='none'">Acknowledge</button></div></div>
+<script src="model.js"></script>
+<script>
+const $=s=>document.querySelector(s),f=(x,d=1)=>isFinite(x)?(+x).toFixed(d):"–";
+const KEYS=["rpm","ref","i","T","vb","ib","soc","vdc","ww"],STD={Kt:.107,Icont:30,Ipeak:45,Tload:3.18,Vlo:45.4,Vhi:54.5};
+let runs=[],cur=null,hover=-1,play=null;
+/* ---------- standard characteristics ---------- */
+$("#std").innerHTML=[["Motor","APBA80L048030-EB"],["Rated voltage / speed","48 V / 3000 rpm"],["Torque constant Kt","0.107 N·m/A ±5 %"],["I continuous / I peak","30 A / 45 A (I²t limiter)"],["Speed window","2900 – 3000 rpm"],["Design load","1 kW = 3.18 Nm"],["Pack OCV window","45.4 V (0 %) – 54.5 V (100 %)"],["Pack","13S10P, 50 Ah, ≈0.011 Ω"],["Drivetrain","ratio 11, wheel r = 0.25 m"],["Power balance Pdc/Pbatt","0.85 – 1.02"]].map(r=>`<tr><td class="mut">${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+/* ---------- KPI cards ---------- */
+const KP=[["rpm","Motor speed","rpm",0],["i","Motor current","A",1],["T","Torque","N·m",2],["vb","Battery voltage","V",2],["soc","State of charge","%",3],["pw","Battery power","kW",2]];
+$("#kpis").innerHTML=KP.map(k=>`<div class="kpi"><i>${k[1]}</i><b id="k_${k[0]}">–</b><i>${k[2]}</i></div>`).join("");
+/* ---------- charts config ---------- */
+const CH=[{t:"Speed vs reference [rpm]",s:[["rpm","#5b9dff"],["ref","#8b97b3"]],h:[[2900,"#2ecc8f"],[3000,"#2ecc8f"]]},
+{t:"Motor current [A]",s:[["i","#ff9f43"]],h:[[30,"#f5b83d"],[45,"#ff5d6c"]]},
+{t:"Torque [N·m]",s:[["T","#b07cff"]],h:[[3.18,"#2ecc8f"]]},
+{t:"Battery voltage [V]",s:[["vb","#2ecc8f"]],h:[[45.4,"#ff5d6c"]]},
+{t:"Battery current [A]",s:[["ib","#4dd0e1"]],h:[]},
+{t:"State of charge [%]",s:[["soc","#f5b83d"]],h:[],sc:100}];
+$("#charts").innerHTML=CH.map((c,n)=>`<div class="ch"><h3>${c.t}<small id="v${n}"></small></h3><div class="cw"><canvas id="c${n}"></canvas></div></div>`).join("");
+function draw(n,upto){const c=CH[n],cv=$("#c"+n),dp=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;if(!W||!H)return;cv.width=W*dp;cv.height=H*dp;const x=cv.getContext("2d");x.scale(dp,dp);
+ const L=52,R=10,T=8,B=20,sc=c.sc||1;let lo=1e99,hi=-1e99;
+ if(cur){c.s.forEach(([k])=>cur.d[k].forEach(v=>{if(isFinite(v)){v*=sc;lo=Math.min(lo,v);hi=Math.max(hi,v)}}));c.h.forEach(([v])=>{if(v>=lo*0.5&&v<=hi*1.5){lo=Math.min(lo,v);hi=Math.max(hi,v)}})}
+ if(!isFinite(lo)){lo=0;hi=1}if(hi-lo<1e-9){hi+=1;lo-=1}const pd=(hi-lo)*.08;lo-=pd;hi+=pd;
+ const tm=cur?cur.t[cur.t.length-1]:.3,X=t=>L+t/tm*(W-L-R),Y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+ x.font="11px system-ui";x.fillStyle="#8b97b3";x.strokeStyle="#243049";x.lineWidth=1;
+ for(let g=0;g<=4;g++){const v=lo+(hi-lo)*g/4,y=Y(v);x.beginPath();x.moveTo(L,y);x.lineTo(W-R,y);x.stroke();x.fillText(v.toFixed(hi-lo<.1?4:hi-lo<1?3:hi-lo<10?2:hi-lo<100?1:0),2,y+4)}
+ for(let g=0;g<=5;g++){const t=tm*g/5;x.fillText(t.toFixed(2)+"s",X(t)-(g==5?26:12),H-5)}
+ c.h.forEach(([v,col])=>{if(v<lo||v>hi)return;x.strokeStyle=col;x.setLineDash([5,4]);x.beginPath();x.moveTo(L,Y(v));x.lineTo(W-R,Y(v));x.stroke();x.setLineDash([])});
+ if(!cur)return;let txt=[];
+ c.s.forEach(([k,col])=>{const d=cur.d[k];x.strokeStyle=col;x.lineWidth=2;x.beginPath();let st=0;for(let j=0;j<=upto&&j<d.length;j++){const v=d[j]*sc;if(!isFinite(v)){st=0;continue}st?x.lineTo(X(cur.t[j]),Y(v)):x.moveTo(X(cur.t[j]),Y(v));st=1}x.stroke();
+  const hj=hover>=0?Math.min(hover,upto):upto;if(isFinite(d[hj]))txt.push(`<span style="color:${col}">${k} ${f(d[hj]*sc,Math.abs(d[hj]*sc)>100?0:2)}</span>`)});
+ if(hover>=0&&hover<=upto){x.strokeStyle="#fff6";x.lineWidth=1;x.beginPath();x.moveTo(X(cur.t[hover]),T);x.lineTo(X(cur.t[hover]),H-B);x.stroke()}
+ $("#v"+n).innerHTML=txt.join(" &nbsp;")}
+function drawAll(u){CH.forEach((_,n)=>draw(n,u))}
+CH.forEach((_,n)=>{const cv=$("#c"+n);cv.onmousemove=e=>{if(!cur)return;const r=cv.getBoundingClientRect(),fr=(e.clientX-r.left-52)/(r.width-62);hover=Math.max(0,Math.min(cur.t.length-1,Math.round(fr*(cur.t.length-1))));frame(shown)};cv.onmouseleave=()=>{hover=-1;frame(shown)}});
+const {simulate,checks}=EVModel;
+/* ---------- UI helpers ---------- */
+function toast(m,k){const e=document.createElement("div");e.className="toast "+(k||"");e.textContent=m;$("#toasts").appendChild(e);setTimeout(()=>e.remove(),6000)}
+function popup(kind,title,items){const m=$("#modal");m.className=kind=="warn"?"w":"";m.style.display="flex";$("#mt").textContent=title;$("#mb").innerHTML="<ul>"+items.map(x=>"<li>"+x+"</li>").join("")+"</ul>"}
+function setStatus(t,c){const s=$("#status");s.textContent=t;s.className="pill "+c}
+let shown=0,wallTxt="";
+function frame(u){shown=u;drawAll(u);if(!cur)return;const j=hover>=0?Math.min(hover,u):u,d=cur.d;
+ const v={rpm:f(d.rpm[j],0),i:f(d.i[j]),T:f(d.T[j],2),vb:f(d.vb[j],2),soc:f(d.soc[j]*100,3),pw:f(d.vb[j]*d.ib[j]/1000,2)};KP.forEach(k=>$("#k_"+k[0]).textContent=v[k[0]]);
+ const fr=cur.t.length>1?j/(cur.t.length-1):0;$("#prog").style.width=(fr*100)+"%";$("#ptxt").textContent="Sim time "+f(cur.t[j],3)+" s of "+f(cur.t[cur.t.length-1],3)+" s"+wallTxt}
+function showChecks(r){const C=r.chk,F=C.filter(c=>c.s=="FAIL"),W=C.filter(c=>c.s=="WARN");
+ $("#checks").innerHTML=C.map(c=>`<tr><td>${c.n}</td><td class="mut">${c.r}</td><td>${c.v}</td><td><span class="pill ${c.s}">${c.s}</span></td></tr>`).join("");
+ const s=F.length?"FAIL":W.length?"OK, "+W.length+" warning(s)":"ALL PASSED";$("#sum").textContent=`PASS ${C.filter(c=>c.s=="PASS").length} · WARN ${W.length} · FAIL ${F.length}${C.some(c=>c.s=="SKIP")?" · SKIP "+C.filter(c=>c.s=="SKIP").length:""} → ${s}`;$("#sum").className="pill "+(F.length?"FAIL":W.length?"WARN":"PASS");$("#nav [data-t=chk]").innerHTML="Checks"+(F.length?` <span class="pill FAIL">${F.length}</span>`:W.length?` <span class="pill WARN">${W.length}</span>`:"");renderStats();pg=0;renderSamples();return{F,W}}
+/* ---------- run / playback ---------- */
+function startRun(r){cancelAnimationFrame(play);cur=r;r.chk=checks(r);hover=-1;setStatus("RUNNING","WARN");$("#sum").textContent="running…";$("#sum").className="pill idle";
+ const N=r.t.length,dur=+$("#spd").value,t0=performance.now();let alerted={};
+ const step=now=>{const el=(now-t0)/1000,fr=Math.min(1,el/dur),u=Math.min(N-1,Math.floor(fr*(N-1)));wallTxt=` · wall ${f(Math.min(el,dur),0)} s / ${f(dur,0)} s (ETA ${f(Math.max(0,dur-el),0)} s)`;frame(u);
+  if(!alerted.oc&&r.d.i[u]>1.1*r.p.Ipeak){alerted.oc=1;toast("⚠ Overcurrent: "+f(r.d.i[u])+" A at "+f(r.t[u],3)+" s","bad")}
+  if(!alerted.vl&&r.d.vb[u]<45.4){alerted.vl=1;toast("⚠ Battery voltage below 45.4 V at "+f(r.t[u],3)+" s","bad")}
+  if(fr<1)play=requestAnimationFrame(step);else finish(r)};play=requestAnimationFrame(step)}
+function finish(r){const{F,W}=showChecks(r);setStatus(F.length?"FAILED":W.length?"OK · WARN":"PASSED",F.length?"FAIL":W.length?"WARN":"PASS");
+ r.id="L"+Date.now().toString(36);r.ts=new Date();runs.unshift(r);save();hist();
+ if(F.length)popup("bad","⛔ System alert – "+F.length+" check(s) failed",F.map(c=>`<b>${c.n}</b>: ${c.v} (rule: ${c.r})`));
+ else if(W.length)popup("warn","⚠ Run valid, with "+W.length+" warning(s)",W.map(c=>`<b>${c.n}</b>: ${c.v} (rule: ${c.r})`));
+ else toast("✔ All checks passed","good")}
+const P=()=>({rpmRef:+$("#rpmRef").value,ramp:+$("#ramp").value,load:+$("#load").value,Ipeak:+$("#ipeak").value,tstop:Math.max(.1,Math.min(1,+$("#tstop").value))});
+$("#run").onclick=()=>{const p=P();if(!(p.rpmRef>0&&p.ramp>0&&p.load>=0&&p.Ipeak>0))return popup("bad","Invalid input",["All values must be positive numbers."]);startRun(simulate(p))};
+$("#stop").onclick=()=>{cancelAnimationFrame(play);setStatus("STOPPED","idle");toast("Playback stopped (run not saved)")};
+$("#fault").onclick=()=>{$("#load").value=1.8;$("#ipeak").value=45;toast("Overload preset loaded – press Run")};
+$("#nom").onclick=()=>{$("#rpmRef").value=2950;$("#ramp").value=13000;$("#load").value=1;$("#ipeak").value=45;$("#tstop").value=.3};
+/* ---------- history: server-backed (/api/runs), local fallback ---------- */
+const API="/api/runs";let srv=null,seen=null;
+const metaOf=r=>({id:r.id,ts:r.ts,source:r.src=="csv"?"csv":"web",name:r.src=="csv"?r.name:"",setup:`${r.p.rpmRef} rpm, load x${r.p.load}, ${r.p.tstop} s`,finalRpm:r.d.rpm.at(-1),peak:Math.max(...r.d.i),result:r.chk.some(c=>c.s=="FAIL")?"FAIL":r.chk.some(c=>c.s=="WARN")?"WARN":"PASS"});
+function hist(){const L=srv||runs.filter(r=>r.chk).map(metaOf);$("#hist").innerHTML=L.map(m=>`<tr><td>${m.id}</td><td>${new Date(m.ts).toLocaleString()}</td><td class="mut">${m.source=="matlab"?"MATLAB: ":m.source=="csv"?"CSV: ":""}${m.name||""} ${m.setup}</td><td>${f(m.finalRpm,0)}</td><td>${f(m.peak)}</td><td><span class="pill ${m.result}">${m.result}</span></td><td><button onclick="view('${m.id}')">View</button></td></tr>`).join("")||`<tr><td colspan="7" class="mut">No runs yet.</td></tr>`}
+async function refresh(){try{const j=await(await fetch(API)).json();if(!Array.isArray(j))throw 0;srv=j;const nm=j.find(m=>m.source=="matlab");if(seen!==null&&nm&&nm.id!=seen)toast("New run from MATLAB: "+nm.id+" - click View","good");seen=nm?nm.id:""}catch(e){srv=null}hist()}
+async function save(){const r=runs[0];try{const res=await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({source:r.src=="csv"?"csv":"web",name:r.name||"",p:r.p,t:r.t,d:r.d})}),j=await res.json();if(!res.ok)throw Error(j.error);r.sid=j.id;toast("Saved on server: "+j.id,"good")}catch(e){toast("Server save failed - run kept in this browser only")}refresh()}
+async function view(id){cancelAnimationFrame(play);wallTxt="";let r=runs.find(x=>x.sid==id||x.id==id);if(!r){try{const j=await(await fetch(API+"?id="+encodeURIComponent(id))).json(),d=Object.fromEntries(KEYS.map(k=>[k,j.d[k].map(v=>v==null?NaN:v)]));r={t:j.t,d,p:j.p,src:j.source,name:j.name,id:j.id,sid:j.id,ts:j.ts};r.chk=checks(r);runs.push(r)}catch(e){return toast("Could not load run","bad")}}
+ cur=r;hover=-1;showChecks(r);frame(r.t.length-1);setStatus("VIEWING "+r.id,"idle")}
+refresh();setInterval(refresh,15000);
+/* ---------- CSV import / export (MATLAB EV_DAQ_Clean or EV_BlackBox_log) ---------- */
+$("#imp").onclick=()=>$("#file").click();
+$("#file").onchange=e=>{const fl=e.target.files[0];if(!fl)return;const rd=new FileReader();rd.onload=()=>{try{const L=rd.result.trim().split(/\r?\n/),H=L[0].split(",").map(h=>h.trim().toLowerCase()),rows=L.slice(1).map(l=>l.split(",").map(Number));
+ const col=(...a)=>H.findIndex(h=>a.some(x=>h===x.toLowerCase())),M={rpm:col("RPM_rpm","rpm"),i:col("Idc_f_A","motor_current_a"),T:col("Torque_Nm","torque"),vb:col("Vbatt_V"),ib:col("Ibatt_A"),soc:col("SOC"),vdc:col("Vdc_m_V"),ww:col("omega_wheel")},tc=col("time","time_s","t","simulationtime");
+ if(M.rpm<0||rows.length<5)throw Error("CSV needs at least an RPM_rpm column and 5 rows (headers: Vbatt_V, Ibatt_A, SOC, RPM_rpm, Idc_f_A, Vdc_m_V, omega_wheel, Torque_Nm).");
+ const t=rows.map((r,j)=>tc>=0?r[tc]:j*.001),tstop=t.at(-1),d={};KEYS.forEach(k=>d[k]=k=="ref"?t.map(x=>Math.min(2950,13000*x)):M[k]<0?t.map(()=>NaN):rows.map(r=>r[M[k]]));
+ startRun({t,d,p:{rpmRef:2950,ramp:13000,load:1,Ipeak:45,tstop:+tstop.toFixed(3)},src:"csv",name:fl.name})}catch(er){popup("bad","⛔ Import failed",[er.message])}};rd.readAsText(fl);e.target.value=""};
+$("#exp").onclick=()=>{if(!cur)return toast("No run to export");const c="Time_s,"+KEYS.join(",")+"\n"+cur.t.map((t,j)=>t+","+KEYS.map(k=>cur.d[k][j]).join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([c],{type:"text/csv"}));a.download="EV_run_"+Date.now()+".csv";a.click()};
+setInterval(()=>$("#clock").textContent=new Date().toLocaleTimeString(),1000);
+/* ---------- tabs, statistics, samples ---------- */
+const UN={rpm:"rpm",ref:"rpm",i:"A",T:"N·m",vb:"V",ib:"A",soc:"fraction",vdc:"V",ww:"rad/s"},NM={rpm:"Motor speed",ref:"Speed reference",i:"Motor current (filtered)",T:"Torque",vb:"Battery voltage",ib:"Battery current",soc:"State of charge",vdc:"Motor-side DC voltage",ww:"Wheel speed"};
+let pg=0;
+$("#nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;document.querySelectorAll("#nav button").forEach(x=>x.classList.toggle("on",x==b));document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.id=="t_"+b.dataset.t));if(b.dataset.t=="dash")requestAnimationFrame(()=>frame(shown))};
+function renderStats(){if(!cur)return;const d=cur.d,t=cur.t,mx=Math.max(...d.i),pi=d.i.indexOf(mx),r2=d.rpm.findIndex(v=>v>=2900),E=d.vb.reduce((s,v,j)=>s+v*d.ib[j]*.001,0)/3600;
+ $("#sumInfo").innerHTML=[["Time to reach 2900 rpm",r2>=0?f(t[r2],3)+" s":"not reached"],["Peak motor current",f(mx)+" A at "+f(t[pi],3)+" s"],["Final speed",f(d.rpm.at(-1),1)+" rpm"],["Final torque",f(d.T.at(-1),2)+" N·m"],["Battery energy used",f(E,3)+" Wh"],["SOC drop",f((d.soc[0]-d.soc.at(-1))*100,4)+" %"],["Samples",t.length+" ("+f(t.at(-1),3)+" s)"]].map(x=>`<div><small>${x[0]}</small><b>${x[1]}</b></div>`).join("");
+ $("#stbody").innerHTML=KEYS.map(k=>{const a=d[k].filter(isFinite);if(!a.length)return`<tr><td>${NM[k]}</td><td class="mut">${k}</td><td>${UN[k]}</td><td colspan="4" class="mut">no data</td></tr>`;return`<tr><td>${NM[k]}</td><td class="mut">${k}</td><td>${UN[k]}</td><td>${f(Math.min(...a),3)}</td><td>${f(Math.max(...a),3)}</td><td>${f(a.reduce((x,y)=>x+y,0)/a.length,3)}</td><td>${f(a.at(-1),3)}</td></tr>`}).join("")}
+function renderSamples(){if(!cur)return;const st=+$("#step").value,idx=[];for(let j=0;j<cur.t.length;j+=st)idx.push(j);const PS=12,pages=Math.max(1,Math.ceil(idx.length/PS));pg=Math.max(0,Math.min(pg,pages-1));
+ $("#smh").innerHTML="<tr><th>t [s]</th>"+KEYS.map(k=>`<th>${k} [${UN[k]}]</th>`).join("")+"</tr>";
+ $("#smb").innerHTML=idx.slice(pg*PS,pg*PS+PS).map(j=>`<tr><td>${f(cur.t[j],3)}</td>`+KEYS.map(k=>`<td>${f(cur.d[k][j],k=="soc"?5:2)}</td>`).join("")+"</tr>").join("");$("#pgl").textContent=`Page ${pg+1} / ${pages}`}
+$("#step").onchange=()=>{pg=0;renderSamples()};$("#pv").onclick=()=>{pg--;renderSamples()};$("#nx").onclick=()=>{pg++;renderSamples()};
+addEventListener("resize",()=>frame(shown));drawAll(0);
+</script></body></html>

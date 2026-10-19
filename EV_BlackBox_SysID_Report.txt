@@ -1,0 +1,37 @@
+=== EV Digital Twin - Black-Box System Identification Report ===
+Date      : 09-Oct-2026 15:33:29
+Tool      : n4sid (MATLAB System Identification Toolbox)
+Signal var: EV_BlackBox_log   (1 ms ZOH, subsystem EV_BlackBox)
+
+Inputs  (2): RPM_rpm, Idc_f_A
+Outputs (3): Vbatt_V, SOC, RPM_rpm
+Samples total    : 301  (0.301 s at Ts = 0.001 s)
+Estimation set   : 240 samples (first 80%)
+Validation set   : 61 samples (last  20%)
+
+Best model order : nx = 6
+Best val fit (mean over outputs): 2034946643217408.2%
+
+State-space matrices (discrete, Ts = 1 ms):
+A (6x6):
+[1.024 -0.6424 -0.006204 -0.147 -0.5455 -0.4659;-0.2265 0.2374 1.076 -0.2365 2.165 -1.318;-0.2951 0.5389 1.152 0.4405 2.843 0.9814;-0.1884 0.07131 0.4518 -0.2501 0.7688 1.173;0.1377 0.2856 -0.448 -0.367 -0.1042 -0.7703;0.05296 -0.3232 -0.2696 0.2812 -0.2505 -0.04075]
+B (6x2):
+[3.684e+11 0.2225;-4.767e+11 0.395;-6.985e+11 0.3736;-4.567e+10 0.1916;9.526e+10 -0.7785;2.116e+11 -0.02949]
+C (3x6):
+[-0.0769 0.001283 -0.02781 0.062 -0.01807 0.1288;-1.193e-05 6.756e-10 9.966e-09 1.878e-09 1.16e-09 1.365e-09;1.59e-13 1.209e-12 2.531e-13 4.395e-13 8.03e-13 2.862e-14]
+D (3x2):
+[0 0;0 0;0 0]
+
+Input mean (for denormalisation):
+[1817.94 27.0269]
+Output mean (for denormalisation):
+[54.2107 0.99999 1817.94]
+
+Base workspace variables set:
+  sys_blackbox, EV_BB_A, EV_BB_B, EV_BB_C, EV_BB_D
+  EV_BB_InputMean, EV_BB_OutputMean, EV_BB_InputLabels, EV_BB_OutputLabels
+
+To open the System Identification app with this data:
+  ident;  % then import Ze / Zv from the workspace
+To compare on the validation set in MATLAB:
+  compare(Zv, sys_blackbox);

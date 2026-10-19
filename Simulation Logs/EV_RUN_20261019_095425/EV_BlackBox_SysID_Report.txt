@@ -1,0 +1,36 @@
+=== EV Digital Twin - Black-Box System Identification Report ===
+Date       : 19-Oct-2026 09:55:27
+Tool       : n4sid (System Identification Toolbox), discrete, Ts = 1 ms
+Data       : EV_BlackBox_log, 101 samples, 0.100 s
+Inputs     : RPM_rpm, Idc_f_A
+Outputs    : Vbatt_V, Ibatt_A
+Split      : estimation 80 samples, validation 21 samples
+Best order : nx = 4
+
+RESULT     : NOT DONE PROPERLY (FAIL)   (PASS 8  WARN 0  FAIL 2)
+
+CHECKS
+  [PASS] Data NaN/Inf           none
+  [PASS] Samples                101 samples, 0.100 s
+  [PASS] Sample time            1 ms
+  [INFO] SOC output             not identified: SOC changes only 4.6e-06 in this run (needs > 1e-03). Use a longer run.
+  [PASS] Estimation             n4sid, best order nx = 4 (of 1..6)
+  [PASS] Model stable           largest pole magnitude 0.9144 (< 1)
+  [PASS] Model scaling          largest B/C entry 22.8 (normalised data)
+  [FAIL] Fit Vbatt_V            6.6 %  (PASS >= 70, WARN >= 40)
+  [FAIL] Fit Ibatt_A            34.0 %  (PASS >= 70, WARN >= 40)
+  [PASS] Figures                4 figures saved in C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261019_095425\Figures
+  [PASS] Saved model            C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261019_095425\EV_BlackBox_SysID.mat
+
+The model works on NORMALISED data:  u_n = (u - U0)./Us ,  y = Ys.*y_n + Y0
+U0 = [628.409 28.5426]
+Us = [386.025 5.42727]
+Y0 = [54.1703 -7.70637]
+Ys = [0.0521686 2.81789]
+
+A = [-0.7059 -0.3279 0.3803 -0.2779;0.08182 0.008851 -0.4033 -0.4635;-0.6989 0.8681 -0.5675 0.4793;0.06877 0.5754 0.6007 0.251]
+B = [22.85 0.07988;-1 0.04958;-8.166 1.033;3.064 -0.01114]
+C = [-0.99 -0.2881 -1.4 0.5882;-0.5831 -0.6782 -0.8464 0.7202]
+D = [0 0;0 0]
+
+To open the System Identification app with this run:  systemIdentification  then import EV_Ze / EV_Zv from the workspace.

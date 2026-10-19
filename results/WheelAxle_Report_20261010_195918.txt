@@ -1,0 +1,9 @@
+
+==============================================================
+  EV DIGITAL TWIN - EV_ReplaceWheelVisual   10-Oct-2026 19:59:18
+  Remove 3-D wheel visual  ->  add Wheel and Axle block
+==============================================================
+[WA] Project folder : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+[WA] MATLAB release : 2024b
+[WA] Compare runs   : 1     Save model : 1
+[WA] Step 1 – checking model state ...

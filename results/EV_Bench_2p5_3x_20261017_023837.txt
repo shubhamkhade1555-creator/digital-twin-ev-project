@@ -1,0 +1,67 @@
+╔════════════════════════════════════════════════════════════╗
+║  EV Benchmark: 2.5x and 3x     t_stop = 3 s              ║
+║  17-Oct-2026 02:38:37                                    ║
+╚════════════════════════════════════════════════════════════╝
+  Folder : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+  t_stop : 3.0 s (forced)
+  Log    : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\EV_Bench_2p5_3x_20261017_023837.txt
+
+  WHY 3x IS NOT EXACTLY POSSIBLE:
+    Tsc = 1e-4 s must be an integer multiple of Ts.
+    3x -> Ts = 3*5e-6 = 1.5e-5 -> Tsc/Ts = 6.667  NOT integer -> INVALID.
+    Valid Ts values near 3x:
+      1.25e-5 (2.5x): Tsc/Ts = 8   VALID  <- Run 1 and 2
+      2.0e-5  (4x):   Tsc/Ts = 5   VALID  <- Run 3 (upper bound)
+
+  RUN LIST:
+    Run 1: 2.5x exact  (Ts=1.25e-5)      Ts=1.25e-05 s  | Tsc/Ts=8  VALID  | speedup=2.5x vs baseline 5e-6
+    Run 2: 3x-low      (Ts=1.25e-5)      Ts=1.25e-05 s  | No exact 3x exists. Nearest valid BELOW 3x = 1.25e-5 (2.5x). Repeat confirms repeatability.
+    Run 3: 3x-high     (Ts=2e-5)         Ts=2e-05 s  | No exact 3x exists. Nearest valid ABOVE 3x = 2e-5 (4x). Shows upper bound.
+
+  rpm_ref = 2950 rpm
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUN 1 of 3 : 2.5x exact  (Ts=1.25e-5)
+  Tsc/Ts=8  VALID  | speedup=2.5x vs baseline 5e-6
+  Ts=1.25e-05 s  t_stop=3.0 s  Start: 17-Oct-2026 02:38:37
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[1] Ts_override = 1.25e-05
+[1] t_stop = 3.0 s
+[1] Model closed.
+[1] PWM Carrier fix: period -> 0.00025 s (=20xTs, rule: >0.000125 s)
+[1]   WARN: Carrier patch: no suitable param found. Simulation may still fail.
+[1]   Model saved + closed (RunAll will reload).
+[1] RunAll done in 62.8 s
+[1] ERR BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+[1] VERDICT: ERROR   PASS=2 WARN=1 FAIL=1   Errors=2
+[1]  [!1] Carrier patch: no suitable param found. Simulation may still fail.
+[1]  [!2] BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUN 2 of 3 : 3x-low      (Ts=1.25e-5)
+  No exact 3x exists. Nearest valid BELOW 3x = 1.25e-5 (2.5x). Repeat confirms repeatability.
+  Ts=1.25e-05 s  t_stop=3.0 s  Start: 17-Oct-2026 02:39:42
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2] Ts_override = 1.25e-05
+[2] t_stop = 3.0 s
+[2] Model closed.
+[2] PWM Carrier fix: period -> 0.00025 s (=20xTs, rule: >0.000125 s)
+[2]   WARN: Carrier patch: no suitable param found. Simulation may still fail.
+[2]   Model saved + closed (RunAll will reload).
+[2] RunAll done in 63.6 s
+[2] ERR BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+[2] VERDICT: ERROR   PASS=2 WARN=1 FAIL=1   Errors=2
+[2]  [!1] Carrier patch: no suitable param found. Simulation may still fail.
+[2]  [!2] BlackBox: Unrecognized function or variable 'EV_BlackBox_log'.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUN 3 of 3 : 3x-high     (Ts=2e-5)   
+  No exact 3x exists. Nearest valid ABOVE 3x = 2e-5 (4x). Shows upper bound.
+  Ts=2e-05 s  t_stop=3.0 s  Start: 17-Oct-2026 02:40:49
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[3] Ts_override = 2e-05
+[3] t_stop = 3.0 s
+[3] Model closed.
+[3] PWM Carrier fix: period -> 0.0004 s (=20xTs, rule: >0.0002 s)
+[3]   WARN: Carrier patch: no suitable param found. Simulation may still fail.
+[3]   Model saved + closed (RunAll will reload).
