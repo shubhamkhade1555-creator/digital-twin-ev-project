@@ -1935,7 +1935,7 @@ if ~cfg.fast && logical(safeBase('EV_BlackBox_PlotsV2', true))
         end
     catch ME_v2
         LG(sprintf('14c/14 Black-Box comparison plots V2 skipped: %s', ME_v2.message));
-        fprintf('[DAQ]    V2 comparison plots skipped (non-fatal): %s\\n', ME_v2.message);
+        fprintf('[DAQ]    V2 comparison plots skipped (non-fatal): %s\n', ME_v2.message);
     end
 end
 
