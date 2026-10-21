@@ -30,7 +30,7 @@ cfg.orders  = 1:6;                    % state orders tried
 cfg.valFrac = 0.3;                    % last 30 % of the run = validation
 cfg.minN    = 300;                    % at least 0.3 s of 1 ms samples
 cfg.fitPass = bv('EV_SysID_FitPass', 70);
-cfg.fitWarn = 40;
+cfg.fitWarn = 40;                    % fits below this are not accepted as a valid dynamic prediction
 cfg.show    = logical(bv('EV_SysID_Show', true));
 Ts = 1e-3;
 
@@ -190,7 +190,9 @@ for k = 1:numel(bestFit)
     elseif f >= cfg.fitWarn
         chk = addRow(chk, ['Raw Fit ' labels_y{k}], 'WARN', sprintf('%.1f %% (WARN >= %g)', f, cfg.fitWarn));
     else
-        chk = addRow(chk, ['Raw Fit ' labels_y{k}], 'WARN', sprintf('%.1f %% (Steady-state variance collapse; physical RMSE is primary)', f));
+        chk = addRow(chk, ['Raw Fit ' labels_y{k}], 'FAIL', sprintf(['%.1f %% (< %g%% acceptance threshold). ' ...
+            'Low validation variance may contribute, but this score does not establish dynamic generalization. ' ...
+            'Use an independent validation run with a ramp/load transient before accepting the model.'], f, cfg.fitWarn));
     end
 end
 
@@ -226,7 +228,7 @@ try
     fprintf(fid, 'Data       : EV_BlackBox_log, %d samples, %.3f s\n', N, t(end));
     fprintf(fid, 'Inputs     : %s\nOutputs    : %s\n', strjoin(labels_u, ', '), strjoin(labels_y, ', '));
     fprintf(fid, 'Split      : estimation %d samples (0 to %.3f s), validation %d samples (%.3f to %.3f s)\n', Nest, t(Nest), N-Nest, tv(1), tv(end));
-    fprintf(fid, 'Leakage    : ZERO - scaling parameters derived strictly on estimation slice [1:%d]\n', Nest);
+    fprintf(fid, 'Scaling    : parameters derived on estimation slice [1:%d]; this alone does not prove generalization or eliminate all validation bias.\n', Nest);
     fprintf(fid, 'Best order : nx = %d\n', bestN);
     fprintf(fid, 'Val Error  : Vbatt RMSE = %.4f V (MAE = %.4f V) | Ibatt RMSE = %.2f A (MAE = %.2f A)\n', bestRMSE(1), bestMAE(1), bestRMSE(2), bestMAE(2));
     fprintf(fid, 'Raw Fits   : Vbatt NRMSE = %.1f %% | Ibatt NRMSE = %.1f %%\n\n', bestFit(1), bestFit(2));
@@ -236,9 +238,9 @@ try
     fprintf(fid, 'U0 = %s\nUs = %s\nY0 = %s\nYs = %s\n', mat2str(U0,6), mat2str(Us,6), mat2str(Y0,6), mat2str(Ys,6));
     fprintf(fid, '\nA = %s\nB = %s\nC = %s\nD = %s\n', mat2str(A,4), mat2str(B,4), mat2str(C,4), mat2str(D,4));
     fprintf(fid, '\nNOTE ON IBATT VALIDATION & FEEDTHROUGH:\n');
-    fprintf(fid, 'Baseline model without feedthrough (D=0) suffered an Ibatt RMSE of ~30.9 A to 32.6 A due to\n');
+    fprintf(fid, 'Reported baseline model without feedthrough (D=0) had an Ibatt RMSE of ~30.9 A to 32.6 A; this historical result must be reproducible from archived artifacts.\n');
     fprintf(fid, 'state-variable ringing during load transition. Enabling direct feedthrough (Feedthrough=1)\n');
-    fprintf(fid, 'allows direct algebraic transmission of inverter current, reducing Ibatt RMSE to %.2f A (<9%% error).\n', bestRMSE(2));
+    fprintf(fid, 'allows an instantaneous input-output term. This is not proof of physical causality; validate D and transient generalization independently. Current-run Ibatt RMSE = %.2f A.\n', bestRMSE(2));
     fprintf(fid, '\nTo open the System Identification app with this run:  systemIdentification  then import EV_Ze / EV_Zv from the workspace.\n');
     fclose(fid);
 catch

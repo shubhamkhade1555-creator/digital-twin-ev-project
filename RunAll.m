@@ -39,7 +39,7 @@ addParameter(p, 'Timeout', 3600, @isnumeric);
 addParameter(p, 'StopTime', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && x > 0));
 addParameter(p, 'Fast', [], @(x) isempty(x) || islogical(x));
 addParameter(p, 'Compile', false, @islogical);   % true = separate compile check before the run (the run compiles anyway; skipping saves one full Simscape compile)
-addParameter(p, 'FullValidation', true, @islogical); % enforce duration >= 0.400 s (min 0.350 s) for speed ramp, load ramp & hold
+addParameter(p, 'FullValidation', true, @islogical); % enforce benchmark duration >= 0.400 s for speed ramp, load ramp & hold
 addParameter(p, 'DiagnosticMode', false, @islogical); % allow short-run diagnostic simulations (< 0.350 s)
 parse(p, varargin{:});
 
@@ -145,21 +145,21 @@ end
 % Stop-time enforcement: FullValidation mode vs DiagnosticMode
 isDiagnostic = p.Results.DiagnosticMode;
 if p.Results.FullValidation && ~isDiagnostic
-    % Speed ramp completes at 0.227 s, load ramp completes at 0.280 s. Full validation requires hold window >= 0.070 s (t_stop >= 0.350 s; benchmark 0.400 s).
-    if t_stop < 0.350
+    % The benchmark and its published validation windows require t_stop >= 0.400 s. Do not certify 0.350-0.399 s runs as full validation.
+    if t_stop < 0.400
         err_msg = sprintf(['[RunAll] INSUFFICIENT DURATION FOR FULL VALIDATION:\n' ...
             'Requested StopTime = %.3f s is too short to complete the full validation sequence.\n' ...
             '  - Speed reference ramp (0 -> 2950 rpm) finishes at 0.227 s.\n' ...
             '  - Rated load torque ramp (0 -> 3.18 Nm) finishes at 0.280 s.\n' ...
-            '  - Steady-state hold window requires at least 0.400 s (minimum 0.350 s).\n' ...
+            '  - The established benchmark requires the complete 0.400 s run.\n' ...
             'To run a full V&V benchmark, set StopTime >= 0.400 s.\n' ...
             'To run a quick short diagnostic check, explicitly pass: RunAll(''DiagnosticMode'', true, ''StopTime'', %.3f)'], ...
             t_stop, t_stop);
-        R = rarec(R, say, 'FAIL', 'Validation Duration', sprintf('%.3f s < 0.350 s minimum needed for full ramp+hold', t_stop));
+        R = rarec(R, say, 'FAIL', 'Validation Duration', sprintf('%.3f s < 0.400 s required benchmark duration', t_stop));
         error('RunAll:InsufficientDuration', '%s', err_msg);
     else
         say('[RunAll]    Mode: FULL VALIDATION (t_stop = %g s >= 0.350 s minimum required)', t_stop);
-        R = rarec(R, say, 'PASS', 'Validation Duration', sprintf('%.3f s (meets full validation requirement)', t_stop));
+        R = rarec(R, say, 'PASS', 'Validation Duration', sprintf('%.3f s (meets 0.400 s benchmark duration)', t_stop));
     end
 else
     say('[RunAll]    *** DIAGNOSTIC MODE ACTIVE *** (t_stop = %g s). Full V&V checks will NOT be certified.', t_stop);
@@ -211,6 +211,15 @@ try
 catch
 end
 say('[RunAll]    Stop Time of the model for this run: %g s', t_stop);
+% Re-check the effective model value AFTER DAQ setup/save. The setup callback can
+% change model configuration, so checking only the requested value is insufficient.
+if p.Results.FullValidation && ~p.Results.DiagnosticMode && t_stop < 0.400
+    R = rarec(R, say, 'FAIL', 'Effective validation duration', ...
+        sprintf('effective model StopTime %.3f s is below required 0.400 s benchmark', t_stop));
+    result = rafinish(result, R, say, root, stamp, toc(tAll));
+    error('RunAll:EffectiveStopTimeTooShort', ...
+        'Full validation blocked: effective model StopTime %.3f s < 0.400 s. Use DiagnosticMode=true only for a diagnostic run.', t_stop);
+end
 
 %% ---- 7. compile check -----------------------------------------------------------------------------
 if p.Results.Compile
