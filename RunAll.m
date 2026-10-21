@@ -39,6 +39,8 @@ addParameter(p, 'Timeout', 3600, @isnumeric);
 addParameter(p, 'StopTime', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && x > 0));
 addParameter(p, 'Fast', [], @(x) isempty(x) || islogical(x));
 addParameter(p, 'Compile', false, @islogical);   % true = separate compile check before the run (the run compiles anyway; skipping saves one full Simscape compile)
+addParameter(p, 'FullValidation', true, @islogical); % enforce duration >= 0.400 s (min 0.350 s) for speed ramp, load ramp & hold
+addParameter(p, 'DiagnosticMode', false, @islogical); % allow short-run diagnostic simulations (< 0.350 s)
 parse(p, varargin{:});
 
 MDL     = 'BLDCSpeedControl_EV_Layout_v2';
@@ -133,11 +135,35 @@ if ~isempty(p.Results.Fast), assignin('base', 'EV_DAQ_Fast', p.Results.Fast); en
 say('[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...');
 evalin('base', 'BLDCSpeedControlData;');
 rpm_ref = rav('rpm_ref', 2950);  I_cont = rav('I_cont', 30);  I_peak = rav('I_peak', 45);
-Kt      = rav('Kt', 0.107);      t_stop = rav('t_stop', 0.3);  pack_Ah = rav('pack_Ah', 50);
+Kt      = rav('Kt', 0.107);      t_stop = rav('t_stop', 0.4);  pack_Ah = rav('pack_Ah', 50);
 if ~isempty(userStop)
-    t_stop = userStop;  assignin('base', 't_stop', t_stop);   % BLDCSpeedControlData.m sets 0.3; the user's value wins
-    say('[RunAll]    Stop Time taken from %s: %g s (parameter file default %g s is ignored)', ...
-        iif(isempty(p.Results.StopTime), 'the Simulink toolbar', 'RunAll(''StopTime'', ...)'), t_stop, rav('t_stop', 0.3));
+    t_stop = userStop;  assignin('base', 't_stop', t_stop);   % BLDCSpeedControlData.m sets 0.4; the user's value wins
+    say('[RunAll]    Stop Time taken from %s: %g s (parameter file default %g s is overridden)', ...
+        iif(isempty(p.Results.StopTime), 'the Simulink toolbar', 'RunAll(''StopTime'', ...)'), t_stop, rav('t_stop', 0.4));
+end
+
+% Stop-time enforcement: FullValidation mode vs DiagnosticMode
+isDiagnostic = p.Results.DiagnosticMode;
+if p.Results.FullValidation && ~isDiagnostic
+    % Speed ramp completes at 0.227 s, load ramp completes at 0.280 s. Full validation requires hold window >= 0.070 s (t_stop >= 0.350 s; benchmark 0.400 s).
+    if t_stop < 0.350
+        err_msg = sprintf(['[RunAll] INSUFFICIENT DURATION FOR FULL VALIDATION:\n' ...
+            'Requested StopTime = %.3f s is too short to complete the full validation sequence.\n' ...
+            '  - Speed reference ramp (0 -> 2950 rpm) finishes at 0.227 s.\n' ...
+            '  - Rated load torque ramp (0 -> 3.18 Nm) finishes at 0.280 s.\n' ...
+            '  - Steady-state hold window requires at least 0.400 s (minimum 0.350 s).\n' ...
+            'To run a full V&V benchmark, set StopTime >= 0.400 s.\n' ...
+            'To run a quick short diagnostic check, explicitly pass: RunAll(''DiagnosticMode'', true, ''StopTime'', %.3f)'], ...
+            t_stop, t_stop);
+        R = rarec(R, say, 'FAIL', 'Validation Duration', sprintf('%.3f s < 0.350 s minimum needed for full ramp+hold', t_stop));
+        error('RunAll:InsufficientDuration', '%s', err_msg);
+    else
+        say('[RunAll]    Mode: FULL VALIDATION (t_stop = %g s >= 0.350 s minimum required)', t_stop);
+        R = rarec(R, say, 'PASS', 'Validation Duration', sprintf('%.3f s (meets full validation requirement)', t_stop));
+    end
+else
+    say('[RunAll]    *** DIAGNOSTIC MODE ACTIVE *** (t_stop = %g s). Full V&V checks will NOT be certified.', t_stop);
+    R = rarec(R, say, 'WARN', 'Validation Duration', sprintf('Diagnostic short run (%.3f s). Full V&V not certified.', t_stop));
 end
 say('[RunAll]    rpm_ref=%g rpm  I_cont=%g A  I_peak=%g A  Kt=%g N*m/A  t_stop=%g s  pack=%g Ah', ...
     rpm_ref, I_cont, I_peak, Kt, t_stop, pack_Ah);

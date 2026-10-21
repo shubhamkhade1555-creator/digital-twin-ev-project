@@ -69,7 +69,7 @@ Kiv = 1.5;      % Integrator gain voltage controller
 %% Speed reference (used by add_current_limiter_EV.m)
 rpm_ref  = 2950;   % target speed, inside the 2900-3000 rpm window [rpm]
 rpm_ramp = 13000;  % reference ramp rate [rpm/s] -> ref reaches 2950 rpm at 2950/13000 = 0.227 s 
-t_stop   = 0.3;    % simulation stop time [s] = about 2.5-3 min of wall time at Ts = 1e-5 (0.5 s took 283 s measured). Must stay > rpm_ref/rpm_ramp (0.227 s)
+t_stop   = 0.4;    % simulation stop time [s] = benchmark full-validation duration (speed ramp finishes at 0.227 s, load ramp finishes at 0.280 s, steady hold to 0.400 s)
 
 %% Current limiter (motor current, from datasheet)
 % Limit is I_peak while the I^2*t budget lasts, then falls back to I_cont.
@@ -116,10 +116,12 @@ wheel_width = 0.10;      % [m]     wheel width (3-D wheel display)
 % derived (for printing / checks)
 rpm_wheel_nom = rpm_ref/gear_ratio;                       % wheel speed at target [rpm]
 v_vehicle_kmh = rpm_wheel_nom*2*pi/60*r_wheel*3.6;        % vehicle speed at target [km/h]
-t_reach_ref   = rpm_ref/rpm_ramp;                         % time the reference reaches 2950 rpm [s]
-if t_stop < t_reach_ref + 0.05
-    warning('BLDC:stopTooShort', ['t_stop = %.3f s is too short: the reference only reaches %.0f rpm at %.3f s. ' ...
-        'Keep at least 0.05 s of hold: t_stop >= %.3f s.'], t_stop, rpm_ref, t_reach_ref, t_reach_ref+0.05);
+t_reach_ref   = rpm_ref/rpm_ramp;                         % time the reference reaches 2950 rpm [s] (~0.227 s)
+t_load_end    = 0.280;                                    % time full rated load is applied [s]
+if t_stop < t_load_end + 0.070
+    warning('BLDC:stopTooShort', ['t_stop = %.3f s is too short for full validation: the speed ramp finishes at %.3f s ' ...
+        'and the load ramp finishes at %.3f s. Full validation requires at least 0.400 s (minimum %.3f s) to hold steady state.'], ...
+        t_stop, t_reach_ref, t_load_end, t_load_end + 0.070);
 end
 % acceleration feasibility: current needed to follow the ramp (rotor inertia only; add vehicle inertia if it is reflected in the model)
 % V7.1: total inertia at the MOTOR shaft = rotor Jm + wheel inertia reflected through the gearbox (J_wheel/gear_ratio^2).
