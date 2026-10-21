@@ -4379,7 +4379,7 @@ if bdIsLoaded(MDL)
     if isempty(userStop), userStop = evStopTime(MDL); end
     if isfinite(userStop) && userStop > 0
         set_param(MDL,'StopTime',sprintf('%.10g',userStop));
-        fprintf('[DAQ] Stop Time kept: %g s\\n', userStop);
+        fprintf('[DAQ] Stop Time kept: %g s\n', userStop);
     end
 elseif ~isempty(p.Results.StopTime)
     load_system(fullfile(root,[MDL '.slx']));
