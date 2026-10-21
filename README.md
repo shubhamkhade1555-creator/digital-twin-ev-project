@@ -100,63 +100,68 @@ The project audit has generated a synchronized 18-issue register and verificatio
 
 ---
 
-## 5. Verification & Publication Plots (`EV_FINAL_PLOTS/`)
+## 5. Black-Box Comparison Plots V2 (MATLAB R2024b; no dashboard)
 
-High-resolution plots illustrating system performance and audit evidence:
-- **`01_SysID_Measured_vs_Predicted_Voltage.png`** — Simscape plant terminal voltage vs Black-Box 2-state model.
-- **`02_SysID_Measured_vs_Predicted_Current.png`** — Simscape plant battery current vs Black-Box predicted current.
-- **`03_SysID_Residuals_Time.png`** — Output error residuals ($y_{meas} - y_{pred}$) across full simulation run.
-- **`04_SysID_Variance_Collapse_Analysis.png`** — Proof of NRMSE denominator collapse during steady state.
-- **`05_SysID_Model_Order_Comparison.png`** — State order sweep ($n_x = 1..6$) evaluating stability and RMSE.
-- **`06_Powertrain_Speed_Tracking.png`** — Reference ramp vs actual rotor speed ($2950$ RPM).
-- **`07_Powertrain_Motor_Torque_Current.png`** — Electromagnetic torque ($3.18$ Nm) and phase current limiting.
-- **`08_Battery_Pack_Voltage_Current_SOC.png`** — Pack voltage, discharge current, and Coulomb counted SOC.
-- **`09_Power_Balance_and_Efficiency.png`** — Battery power, mechanical power, and system efficiency ($78.94\%$).
-- **`10_VV_Summary_Compliance_Dashboard.png`** — Compliance dashboard across all 24 verification checks.
+The default graph workflow is now the versioned, plot-only pipeline:
+- `EV_BlackBox_ComparePlotsV2.m` generates figures under `Simulation Logs/EV_RUN_*/Figures_BlackBox_V2/`.
+- The pipeline uses the clean Simulink signals and the saved System Identification model/validation dataset.
+- It does **not** create a MATLAB App Designer dashboard.
+- It does **not** create illustrative reference curves or label proxy/derived signals as direct measurements.
+- The current identified model predicts only battery voltage and battery current from `RPM` and `MotorCurrent`. SOC is handled outside the linear model; temperature is plotted only if a real logged signal exists. Motor speed/current/torque plots are simulation signals, not black-box predictions.
 
----
+### Generated graph groups
 
-## 6. How to Run the Simulation
+**Battery**
+- `BatteryVoltage_Simulation.png`
+- `BatteryCurrent_Simulation.png`
+- `SOC_Simulation.png` (if logged)
+- `BatteryTemperature_Simulation.png` (only if logged)
+- `BatteryCellVoltage_Simulation.png` (only if logged)
 
-### Prerequisites
-- MATLAB R2024b (or compatible)
-- Simulink
-- Simscape & Simscape Battery
-- System Identification Toolbox
+**Motor**
+- `MotorRPM_Reference_vs_Actual.png` (when both channels exist)
+- `MotorCurrent_Simulation.png`
+- `MotorTorque_Simulation.png` (only if logged)
+- `DCLinkVoltage_Simulation.png` (only if logged)
 
-### Execution Steps
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/shubhamkhade1555-creator/digital-twin-ev-project.git
-   cd digital-twin-ev-project
-   ```
-2. Open MATLAB and set the repository folder as the current working directory.
-3. Run the automated master simulation pipeline:
-   ```matlab
-   RunAll
-   ```
-4. To launch the interactive Digital Twin graphical user interface:
-   ```matlab
-   EV_Twin_App
-   ```
-5. To execute automatic Black-Box System Identification on any logged run:
-   ```matlab
-   EV_SysID_Auto
-   ```
+**System Identification**
+- `Validation_Voltage_Measured_vs_Predicted.png`
+- `Validation_Current_Measured_vs_Predicted.png`
+- `Residual_Voltage.png`
+- `Residual_Current.png`
+- `SysID_ModelOrder_Fit_Comparison.png` (when order sweep data exists)
+- `SysID_Validation_Metrics.csv`
 
----
+### Run it
 
-## 7. License & Citation
+After a completed simulation with the normal DAQ/SysID pipeline:
 
-Distributed under the MIT License. See `LICENSE` for details.
+```matlab
+% If you have the run folder:
+Rplots = EV_BlackBox_ComparePlotsV2([], fullfile(pwd, ...
+    'Simulation Logs', 'EV_RUN_YYYYMMDD_HHMMSS'));
 
-When utilizing this digital twin model or audit benchmark in academic research, cite as:
-```bibtex
-@misc{khade2026evdigitaltwin,
-  author = {Shubham Khade},
-  title = {Design and Development of a Black-Box Model-Based Real-Time Digital Twin for an Electric Vehicle Battery Using MATLAB/Simulink},
-  year = {2026},
-  publisher = {GitHub},
-  howpublished = {\url{https://github.com/shubhamkhade1555-creator/digital-twin-ev-project}}
-}
+% Or pass the clean table already created by the DAQ builder:
+Rplots = EV_BlackBox_ComparePlotsV2(EV_DAQ_Clean, runDir);
 ```
+
+The DAQ builder and `RunAll.m` use V2 plotting by default. To opt into the legacy DAQ/reference graph pipeline for a specific MATLAB session, set:
+
+```matlab
+EV_BlackBox_PlotsV2 = false;
+```
+
+To restore V2 as the default, clear the flag or set it true:
+
+```matlab
+clear EV_BlackBox_PlotsV2
+% or:
+EV_BlackBox_PlotsV2 = true;
+```
+
+Fast mode skips graph generation. Legacy plotting functions remain in the source for rollback, but are not called by default; this preserves the simulation, logging, Excel reporting and V&V code.
+
+### Validation interpretation
+
+The graph generator plots measured validation data against both one-step predictions and free-run model simulations using the saved normalized validation dataset, then converts predictions back to engineering units. It does not treat a stable model or low RMSE alone as proof of acceptance. Negative raw fit remains visible and the SysID report's acceptance verdict remains authoritative.
+
