@@ -451,35 +451,33 @@ else
     R = rarec(R, say, 'WARN', 'SysID Validation', 'EV_BlackBox_SysID.mat not found');
 end
 
-%% ---- 9b + 10. numbered clean data, comparison graphs, reference Excel (EV_MakeReference) ---------------------
-% EV_MakeReference runs inside the Simulink StopFcn chain (EV_DAQ_Builder_V7 step 14c), so a plain Run in Simulink saves
-% the same files. RunAll waits for it and only calls it itself if the hook did not run.
-say('[RunAll] 10. Clean data + comparison graphs (EV_MakeReference, inside the run folder) ...');
-if logical(rav('EV_DAQ_Fast', false)) || logical(rav('EV_Ref_Skip', false))
-    say('[RunAll]    Fast mode / EV_Ref_Skip: clean-data copy, graphs and reference Excel skipped.');
+%% ---- 10. Black-Box Comparison Plots V2 (plot-only; no dashboard) ----------------------------
+if logical(rav('EV_BlackBox_PlotsV2', true)) && ~logical(rav('EV_DAQ_Fast', false))
+    say('[RunAll] 10. Checking Black-Box Comparison Plots V2 ...');
+    if ~isempty(result.runDir) && isfolder(fullfile(result.runDir, 'Figures_BlackBox_V2'))
+        R = rarec(R, say, 'PASS', 'Black-Box comparison plots V2', ...
+            fullfile(result.runDir, 'Figures_BlackBox_V2'));
+    else
+        R = rarec(R, say, 'WARN', 'Black-Box comparison plots V2', ...
+            'V2 output folder not found; check EV_DAQ_Builder_V7 log and EV_BlackBox_ComparePlotsV2.m');
+    end
+elseif logical(rav('EV_DAQ_Fast', false))
+    say('[RunAll] 10. FAST mode: graph generation skipped.');
+elseif logical(rav('EV_Ref_Skip', false))
+    say('[RunAll] 10. EV_Ref_Skip is enabled: legacy reference graphs skipped.');
 else
+    % Legacy reference-comparison plotting is opt-in only.
     try
         if isempty(result.runDir) || ~isfolder(result.runDir)
-            error('RunAll:noRunDir', 'run folder not found - graphs skipped');
+            error('RunAll:noRunDir', 'run folder not found - legacy graphs skipped');
         end
-        tp = tic;
-        while toc(tp) < 180
-            if rahas('EV_MakeRef_Name'), break, end
-            busy = rahas('EV_MakeRef_Busy') && logical(rav('EV_MakeRef_Busy', false));
-            if ~busy && toc(tp) > 15, break, end
-            pause(1);
-        end
-        if rahas('EV_MakeRef_Name')
-            fname = evalin('base', 'EV_MakeRef_Name');
-        else
-            say('[RunAll]    Simulink hook did not run (old EV_DAQ_Builder_V7.m?) - calling EV_MakeReference here.');
-            EV_MakeReference(C, [], [], result.runDir);
-            fname = evalin('base', 'EV_MakeRef_Name');
-        end
+        say('[RunAll] 10. Legacy reference-comparison plots enabled by configuration.');
+        EV_MakeReference(C, [], [], result.runDir);
         [~, rn] = fileparts(result.runDir);
-        R = rarec(R, say, 'PASS', 'Clean data + graphs', [fullfile('Simulation Logs', rn, 'Figures') '  (' fname ')']);
+        R = rarec(R, say, 'PASS', 'Legacy reference-comparison graphs', ...
+            fullfile('Simulation Logs', rn, 'Figures'));
     catch ME
-        R = rarec(R, say, 'WARN', 'Clean data + graphs', ME.message);
+        R = rarec(R, say, 'WARN', 'Legacy reference-comparison graphs', ME.message);
     end
 end
 
