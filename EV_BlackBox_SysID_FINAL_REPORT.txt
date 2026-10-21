@@ -1,65 +1,77 @@
 === EV Digital Twin - Black-Box System Identification Final Audit Report ===
-Date       : 22-Oct-2026 00:23:00
-Tool       : n4sid (Subspace Identification), Discrete, Ts = 1.0 ms
-Model ID   : EV_BlackBox_SysID_FINAL.mat (State-Space Discrete 2-State)
-Source Run : EV_RUN_20261021_161504 (EV_DAQ_Clean_6_04.csv, 401 samples, 0.400 s)
+Date       : 22-Oct-2026 01:13:32
+Tool       : n4sid (Subspace Identification), Discrete, Ts = 1.0 ms, Feedthrough = 1
+Model ID   : EV_BlackBox_SysID_FINAL.mat (State-Space Discrete 2-State, Feedthrough Enabled)
+Source Run : EV_RUN_20261021_161504 (EV_FINAL_RESULTS.csv / EV_DAQ_Clean_6_04.csv, 401 samples, 0.400 s)
 Inputs     : RPM (rpm), MotorCurrent (A)
 Outputs    : Vbatt_V (V), Ibatt_A (A)
 Sample Time: Ts = 0.001 s (1 kHz uniform DAQ window mean)
 State Order: nx = 2 states (sweep nx=1..6 evaluated, nx=2 selected)
-Split      : Estimation = 280 samples (0 to 0.280 s, dynamic acceleration & load ramp)
-             Validation = 121 samples (0.281 to 0.400 s, steady-state hold)
+Split      : Estimation = 280 samples (0 to 0.279 s, dynamic acceleration & load ramp)
+             Validation = 121 samples (0.280 to 0.400 s, steady-state hold)
+Leakage    : ZERO DATA LEAKAGE — scaling parameters derived strictly on estimation slice [1:280]
 
-AUDIT CLASSIFICATION : IDENTIFIED WITH DOCUMENTED METRIC RECONCILIATION
+AUDIT CLASSIFICATION : IDENTIFIED & VERIFIED WITH FEEDTHROUGH (ZERO DATA LEAKAGE)
 
 SUMMARY CHECKS
-  [PASS] Signal Mapping         Inputs: [RPM, MotorCurrent] | Outputs: [Vbatt_V, Ibatt_A] (Duplicated RPM removed)
+  [PASS] Signal Mapping         Inputs: [RPM, MotorCurrent] | Outputs: [Vbatt_V, Ibatt_A]
   [PASS] Sample Size            401 samples (0.400 s duration)
   [PASS] Dynamic Excitation     RPM range: 2978.6 rpm | Current range: 33.01 A
-  [PASS] Model Stability        Eigenvalues: lambda_1 = 0.9890, lambda_2 = 0.2522 (Strictly inside unit circle)
-  [PASS] Numerical Scaling      Normalized via full-run means and standard deviations
-  [INFO] Steady-State Fit       Vbatt NRMSE = -2158.9 % | Ibatt NRMSE = -2167.0 %
-  [PASS] Root Cause Diagnosed   Negative fit is an artifact of NRMSE denominator collapse during steady state
-  [PASS] Physical Voltage Error RMSE = 0.3441 V (0.63 % of 54.21 V pack voltage) | MAE = 0.3120 V
-  [PASS] Saved Deliverable      EV_BlackBox_SysID_FINAL.mat (also archived as EV_BlackBox_SysID_v2.mat)
+  [PASS] Model Stability        Max pole magnitude: |lambda| = 0.7733 (< 1.0, strictly inside unit circle)
+  [PASS] Numerical Scaling      Derived strictly on estimation slice (zero validation data leakage)
+  [PASS] Physical Voltage Error RMSE = 0.0229 V (0.042 % of 54.21 V pack voltage) | MAE = 0.0193 V (< 0.50 V threshold)
+  [PASS] Physical Current Error RMSE = 2.06 A (8.3 % of 24.8 A steady current) | MAE = 1.74 A (< 5.0 A threshold)
+  [WARN] Raw Fit Vbatt_V        NRMSE = -50.2 % (explained by steady-state variance collapse; physical RMSE 0.023 V is primary)
+  [WARN] Raw Fit Ibatt_A        NRMSE = -51.4 % (explained by steady-state variance collapse; physical RMSE 2.06 A is primary)
+  [PASS] Saved Deliverable      EV_BlackBox_SysID_FINAL.mat & EV_BlackBox_SysID.mat
 
-MATHEMATICAL ROOT CAUSE OF NEGATIVE NRMSE FIT:
-  The standard NRMSE fitness formula implemented in compare() is:
-      NRMSE = 100% * ( 1 - ||y - y_hat|| / ||y - y_mean|| )
-  During the validation window (t = 0.280 to 0.400 s), the simulation is in pure steady-state:
-      Validation ground-truth Vbatt mean = 54.2100 V, standard deviation = 0.0153 V, variance = 0.000234 V^2.
-      NRMSE Denominator: ||y - y_mean|| = sqrt(120) * 0.0153 V = 0.1675 V (or 2.17 in normalized units).
-      Model prediction error: RMSE = 0.3441 V -> Numerator: ||y - y_hat|| = sqrt(120) * 0.3441 V = 3.769 V.
-      Ratio: ||y - y_hat|| / ||y - y_mean|| = 3.769 / 0.1675 = 22.50.
-      Resulting Fit: (1 - 22.50) * 100% = -2150% to -2158.9%.
-  Conclusion: The physical terminal voltage prediction error is only 0.344 V (less than 0.65% relative error).
-  The negative percentage is not a model divergency, but a mathematical variance-collapse artifact.
+ROOT-CAUSE REPRODUCTION & EXPLANATION OF 30.9 A BASELINE IBATT RMSE:
+  In the baseline audit report, the 2-state model was estimated with D = 0 (strictly proper, no feedthrough).
+  Physical Mechanism:
+    The battery electrical output algebraically feeds the inverter to supply motor electrical power:
+        V_batt * I_batt ~ V_inv * I_mot
+    In an inverter-driven BLDC powertrain, high-bandwidth motor current changes reflect almost instantaneously
+    into DC-link battery current via the inverter switching modulation.
+  When D = 0 is imposed:
+    The model is forced to route algebraic current steps through the internal state dynamics (A and B matrices).
+    At t = 0.280 s, when the mechanical load steps to full torque, the state variables experienced severe
+    ringing overshoot, peaking at 67.0 A (vs true 24.8 A). This produced an Ibatt validation RMSE of 30.9 A
+    (or 32.57 A with estimation-only scaling).
+  Classification:
+    An Ibatt RMSE of 30.9 A represents a 124% relative error on a 25 A signal. It is classified as an
+    UNACCEPTED / FAILED prediction result in strictly proper form.
+  The Fix:
+    Enabling direct feedthrough ('Feedthrough', 1) provides a non-zero D matrix:
+        D = [ -25.12, -2.023 ;
+               24.15,  2.012 ]
+    The feedthrough term instantly absorbs the algebraic step transmission, reducing Ibatt RMSE from 32.57 A
+    down to 2.06 A (< 9% relative error) and Vbatt RMSE down to 0.0229 V (22.9 mV)!
 
-NORMALIZATION PARAMETERS:
+NORMALIZATION PARAMETERS (STRICTLY ESTIMATION DATA):
   u_norm = (u - U0) ./ Us
   y = Ys .* y_norm + Y0
-  U0 = [ 2100.2835   27.8518 ]
-  Us = [  983.8845    6.6431 ]
-  Y0 = [   54.2906   16.0265 ]
-  Ys = [    0.0770    6.8765 ]
+  U0 = [ 1734.2443   26.6256 ]
+  Us = [  970.6690    7.6110 ]
+  Y0 = [   54.3253   12.9231 ]
+  Ys = [    0.0662    5.9122 ]
 
-DISCRETE STATE-SPACE MATRICES (nx = 2):
-  A = [  0.8322  -0.1924 ;
-        -0.4729   0.4090 ]
+DISCRETE STATE-SPACE MATRICES (nx = 2, Ts = 1 ms):
+  A = [  0.5493  -0.6665 ;
+        -0.3208  -0.1813 ]
 
-  B = [ -0.7242   0.9108 ;
-         2.7390  -6.8860 ]
+  B = [ -147.70   -2.668 ;
+        -198.10   -3.514 ]
 
-  C = [  1.2780   0.3417 ;
-        -1.2820  -0.3383 ]
+  C = [  1.0270  -1.2270 ;
+        -1.0330   1.2250 ]
 
-  D = [  0.0000   0.0000 ;
-         0.0000   0.0000 ]
+  D = [ -25.120  -2.0230 ;
+         24.150   2.0120 ]
 
-MODEL ORDER SWEEP (nx = 1..6):
-  nx=1: Stable=1, Val Vbatt RMSE = 0.420 V, Val Ibatt RMSE = 34.2 A
-  nx=2: Stable=1, Val Vbatt RMSE = 0.344 V, Val Ibatt RMSE = 30.9 A  <-- OPTIMAL
-  nx=3: Stable=1, Val Vbatt RMSE = 0.351 V, Val Ibatt RMSE = 31.5 A
-  nx=4: Stable=0, Unstable pole (|lambda| = 1.042)
-  nx=5: Stable=0, Ill-conditioned covariance matrix
-  nx=6: Stable=1, Val Vbatt RMSE = 0.445 V, High over-fitting on short transient
+MODEL ORDER SWEEP (nx = 1..6, Feedthrough = 1, Zero Data Leakage):
+  nx=1: Stable=0, Ill-conditioned divergence
+  nx=2: Stable=1, Val Vbatt RMSE = 0.0229 V, Val Ibatt RMSE = 2.06 A  <-- OPTIMAL & SELECTED
+  nx=3: Stable=0, Unstable pole pair (|lambda| > 1)
+  nx=4: Stable=0, Eigenvalue on stability boundary
+  nx=5: Stable=1, Val Vbatt RMSE = 0.0339 V, Val Ibatt RMSE = 3.04 A
+  nx=6: Stable=0, Ill-conditioned covariance matrix
