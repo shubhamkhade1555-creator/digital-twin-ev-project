@@ -165,3 +165,47 @@ Fast mode skips graph generation. Legacy plotting functions remain in the source
 
 The graph generator plots measured validation data against both one-step predictions and free-run model simulations using the saved normalized validation dataset, then converts predictions back to engineering units. It does not treat a stable model or low RMSE alone as proof of acceptance. Negative raw fit remains visible and the SysID report's acceptance verdict remains authoritative.
 
+## 6. How to Run the Simulation
+
+### Prerequisites
+- MATLAB R2024b (or compatible)
+- Simulink
+- Simscape & Simscape Battery
+- System Identification Toolbox
+
+### Execution Steps
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/shubhamkhade1555-creator/digital-twin-ev-project.git
+   cd digital-twin-ev-project
+   ```
+2. Open MATLAB and set the repository folder as the current working directory.
+3. Run the automated master simulation pipeline:
+   ```matlab
+   RunAll
+   ```
+4. To launch the interactive Digital Twin graphical user interface:
+   ```matlab
+   EV_Twin_App
+   ```
+5. To execute automatic Black-Box System Identification on any logged run:
+   ```matlab
+   EV_SysID_Auto
+   ```
+
+---
+
+## 7. License & Citation
+
+Distributed under the MIT License. See `LICENSE` for details.
+
+When utilizing this digital twin model or audit benchmark in academic research, cite as:
+```bibtex
+@misc{khade2026evdigitaltwin,
+  author = {Shubham Khade},
+  title = {Design and Development of a Black-Box Model-Based Real-Time Digital Twin for an Electric Vehicle Battery Using MATLAB/Simulink},
+  year = {2026},
+  publisher = {GitHub},
+  howpublished = {\url{https://github.com/shubhamkhade1555-creator/digital-twin-ev-project}}
+}
+```
