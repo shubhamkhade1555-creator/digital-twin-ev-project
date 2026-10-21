@@ -1,0 +1,21 @@
+EV Black-Box Comparison Plots V2
+Run folder: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700
+Generated: 22-Oct-2026 04:47:46
+Model outputs available in this SysID workflow: battery voltage and battery current.
+SOC is outside the linear model; temperature is plotted only if logged.
+Motor RPM/current/torque are plant signals; this model does not predict them.
+
+Files:
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\Battery\BatteryVoltage_Simulation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\Battery\BatteryCurrent_Simulation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\Battery\SOC_Simulation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\Motor\MotorRPM_Reference_vs_Actual.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\Motor\MotorCurrent_Simulation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\Motor\MotorTorque_Simulation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\Motor\DCLinkVoltage_Simulation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\SystemIdentification\Validation_Voltage_Measured_vs_Predicted.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\SystemIdentification\Residual_Voltage.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\SystemIdentification\Validation_Current_Measured_vs_Predicted.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\SystemIdentification\Residual_Current.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\SystemIdentification\SysID_Validation_Metrics.csv
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_044700\Figures_BlackBox_V2\SystemIdentification\SysID_ModelOrder_Fit_Comparison.png

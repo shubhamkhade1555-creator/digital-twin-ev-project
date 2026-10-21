@@ -4339,13 +4339,13 @@ assert(strcmpi(get_param(MDL,'SimulationStatus'),'stopped'), ...
     'Stop the model before creating battery measurement scopes.');
 
 defs = { ...
-    'Voltage', {'log_vcell','log_vbatt'}, 'Scope_BatteryVoltage_Sensor'; ...
-    'Current', {'log_icell','log_ibatt'}, 'Scope_BatteryCurrent_Sensor'};
+    'Voltage', {'Battery Voltage Scaling', 'GT_MON_Vbat_Assy', 'Display Battery Voltage', 'log_vcell', 'log_vbatt'}, 'Scope_BatteryVoltage_Sensor'; ...
+    'Current', {'Battery Current Scaling', 'GT_MON_Ibat_Cell', 'Display Battery Current', 'log_icell', 'log_ibatt'}, 'Scope_BatteryCurrent_Sensor'};
 for k = 1:size(defs,1)
     kind = defs{k,1}; candidates = defs{k,2}; scopeName = defs{k,3};
     scopePath = [MDL '/' scopeName];
     if getSimulinkBlockHandle(scopePath) ~= -1
-        fprintf('[DAQ] Existing %s kept: %s\\n',kind,scopePath);
+        fprintf('[DAQ] Existing %s kept: %s\n',kind,scopePath);
         continue
     end
     srcBlock = '';
@@ -4384,7 +4384,7 @@ for k = 1:size(defs,1)
         continue
     end
     add_line(MDL,src,sp.Inport(1),'autorouting','on');
-    fprintf('[DAQ] Added %s and wired it to existing logger signal from %s.\\n',scopeName,srcBlock);
+    fprintf('[DAQ] Added %s and wired it to existing logger signal from %s.\n',scopeName,srcBlock);
 end
 save_system(MDL);
 end

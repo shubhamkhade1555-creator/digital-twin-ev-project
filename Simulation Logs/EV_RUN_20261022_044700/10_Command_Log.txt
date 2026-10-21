@@ -1,0 +1,40 @@
+====================================================
+  EV DIGITAL TWIN SIMULATION
+====================================================
+  Run ID             : EV_RUN_20261022_044700
+  Date/Time          : 22-Oct-2026 04:47:46
+  MATLAB version     : 24.2.0.3212159 (R2024b) Update 9
+  Model              : BLDCSpeedControl_EV_Layout_v2.slx
+  Parameter file     : BLDCSpeedControlData.m
+
+  BATTERY
+    Configuration    : 13S10P, 50 Ah
+  MOTOR
+    Vnom 48 V | Icont 30 A | Ipeak 45 A | Kt 0.1070 Nm/A | 3000 rpm | poles pairs 4
+  VEHICLE
+    gear 11.0 | wheel radius 0.250 m
+  CONTROLLER
+    speed PI 0.0500/10.00 | voltage PI 0.300/1.50 | limiter PI 0.20/100 | target 2950 rpm
+
+  Data acquisition   : PASS
+  Number of signals  : 10 raw columns
+  Raw sample count   : 30001
+  Cleaned samples    : 301
+  Sim time           : 0.300 s   (wall clock 86.1 s, post-processing 46.3 s)
+
+  Final RPM          : 2932.77 rpm
+  Peak RPM           : 2978.64 rpm
+  Peak motor current : 33.01 A
+  RMS motor current  : 27.97 A
+  Peak battery cur.  : 27.73 A
+  Battery voltage    : 54.22 V
+  Final SOC          : 1.0000
+  Battery power      : 1232.9 W
+  Mechanical power   : 968.3 W
+  Efficiency         : 78.5 %
+
+  FINAL V&V STATUS   : FAIL
+====================================================
+
+################ CAPTURED COMMAND WINDOW OUTPUT ################
+(command-window capture was not active for this run)

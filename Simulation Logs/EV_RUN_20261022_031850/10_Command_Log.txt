@@ -1,0 +1,70 @@
+====================================================
+  EV DIGITAL TWIN SIMULATION
+====================================================
+  Run ID             : EV_RUN_20261022_031850
+  Date/Time          : 22-Oct-2026 03:20:36
+  MATLAB version     : 24.2.0.3212159 (R2024b) Update 9
+  Model              : BLDCSpeedControl_EV_Layout_v2.slx
+  Parameter file     : BLDCSpeedControlData.m
+
+  BATTERY
+    Configuration    : 13S10P, 50 Ah
+  MOTOR
+    Vnom 48 V | Icont 30 A | Ipeak 45 A | Kt 0.1070 Nm/A | 3000 rpm | poles pairs 4
+  VEHICLE
+    gear 11.0 | wheel radius 0.250 m
+  CONTROLLER
+    speed PI 0.0500/10.00 | voltage PI 0.300/1.50 | limiter PI 0.20/100 | target 2950 rpm
+
+  Data acquisition   : PASS
+  Number of signals  : 10 raw columns
+  Raw sample count   : 50001
+  Cleaned samples    : 501
+  Sim time           : 0.500 s   (wall clock 159.0 s, post-processing 106.3 s)
+
+  Final RPM          : 2950.29 rpm
+  Peak RPM           : 2978.64 rpm
+  Peak motor current : 33.01 A
+  RMS motor current  : 28.97 A
+  Peak battery cur.  : 26.09 A
+  Battery voltage    : 54.21 V
+  Final SOC          : 1.0000
+  Battery power      : 1240.5 W
+  Mechanical power   : 981.1 W
+  Efficiency         : 79.1 %
+
+  FINAL V&V STATUS   : FAIL
+====================================================
+
+################ CAPTURED COMMAND WINDOW OUTPUT ################
+[RunAll]    ... running, simulation time 0.000 / 0.5 s, wall time 7 s
+[RunAll]    ... running, simulation time 0.017 / 0.5 s, wall time 12 s
+[RunAll]    ... running, simulation time 0.036 / 0.5 s, wall time 17 s
+[RunAll]    ... running, simulation time 0.050 / 0.5 s, wall time 22 s
+[RunAll]    ... running, simulation time 0.069 / 0.5 s, wall time 28 s
+[RunAll]    ... running, simulation time 0.089 / 0.5 s, wall time 33 s
+[RunAll]    ... running, simulation time 0.108 / 0.5 s, wall time 38 s
+[RunAll]    ... running, simulation time 0.122 / 0.5 s, wall time 43 s
+[RunAll]    ... running, simulation time 0.139 / 0.5 s, wall time 48 s
+[RunAll]    ... running, simulation time 0.157 / 0.5 s, wall time 53 s
+[RunAll]    ... running, simulation time 0.175 / 0.5 s, wall time 58 s
+[RunAll]    ... running, simulation time 0.192 / 0.5 s, wall time 63 s
+[RunAll]    ... running, simulation time 0.208 / 0.5 s, wall time 68 s
+[RunAll]    ... running, simulation time 0.224 / 0.5 s, wall time 74 s
+[RunAll]    ... running, simulation time 0.241 / 0.5 s, wall time 79 s
+[RunAll]    ... running, simulation time 0.259 / 0.5 s, wall time 84 s
+[RunAll]    ... running, simulation time 0.277 / 0.5 s, wall time 89 s
+[RunAll]    ... running, simulation time 0.293 / 0.5 s, wall time 94 s
+[RunAll]    ... running, simulation time 0.310 / 0.5 s, wall time 99 s
+[RunAll]    ... running, simulation time 0.327 / 0.5 s, wall time 104 s
+[RunAll]    ... running, simulation time 0.344 / 0.5 s, wall time 109 s
+[RunAll]    ... running, simulation time 0.359 / 0.5 s, wall time 114 s
+[RunAll]    ... running, simulation time 0.376 / 0.5 s, wall time 120 s
+[RunAll]    ... running, simulation time 0.392 / 0.5 s, wall time 125 s
+[RunAll]    ... running, simulation time 0.410 / 0.5 s, wall time 130 s
+[RunAll]    ... running, simulation time 0.428 / 0.5 s, wall time 135 s
+[RunAll]    ... running, simulation time 0.444 / 0.5 s, wall time 140 s
+[RunAll]    ... running, simulation time 0.462 / 0.5 s, wall time 145 s
+[RunAll]    ... running, simulation time 0.479 / 0.5 s, wall time 150 s
+[RunAll]    ... running, simulation time 0.499 / 0.5 s, wall time 155 s
+
