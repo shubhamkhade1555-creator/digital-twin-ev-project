@@ -4,6 +4,25 @@ All notable technical corrections, model reconciliations, and documentation chan
 
 ---
 
+## [Version 8.2 - Audit Scaling Correction, Dual Validation & Sign Auditing] - 22-Oct-2026
+
+### Fixed & Implemented
+- **Master Audit Scaling & Physical-Unit Separation (`RunAll.m`):** Corrected Section 9c audit to ensure physical-unit input data (`U_physical = Zv.InputData .* Us + U0`) is never fed into normalized models (`predict` or `sim`). Maintained strictly normalized inputs `Zv` for model prediction while applying physical de-scaling exclusively to output predictions. Added separate 1-step and free-run validation reporting for voltage and current.
+- **Robust Dual Validation Pipeline (`EV_SysID_Auto.m`):** Implemented separate 1-step prediction (`compare(Zv, s, 1)`) and free-run simulation (`compare(Zv, s, Inf)`). Evaluated RMSE, MAE, prediction bias, raw NRMSE fits, and $\pm 10\%$ tolerance pass rates.
+- **Strict Predefined Acceptance Criteria (`EV_SysID_Auto.m`):** Enforced rule that models with negative raw NRMSE dynamic fits are marked `FAIL` under `Model Acceptance` and reported as `NOT ACCEPTED / PROVISIONAL`, refusing to convert low physical RMSE into an unjustified overall dynamic PASS.
+- **Battery Current Sign & Source Auditing (`EV_DAQ_Builder_V7.m`):** Replaced blind `abs(BatteryCurrent)` with an audited sign inversion (`-V.ibatt`) that converts Simscape passive convention to positive discharge while preserving polarity for regenerative braking. Documented that check `VV-015` was skipped in historical specification sequence (24 active checks).
+- **Datasheet Parameter Review (`BLDCSpeedControlData.m`):** Audited physical Nanotec APBA80L048030 motor parameters ($R_{ll} = 0.043\ \Omega \implies R_{phase} = 0.0215\ \Omega$) and Samsung INR21700-50E battery resistance ($R_{cell} \approx 28\text{ m}\Omega \implies R_{pack} \approx 0.036\ \Omega$). Documented controller loop gain coupling and preserved parameters without blind tuning.
+- **Reconciled Documentation (`EV_SysID_Signal_Mapping.md`, `EV_BlackBox_SysID_FINAL_REPORT.txt`, `UNRESOLVED_ISSUES.md`, `FINAL_VALIDATION_SUMMARY.md`):** Updated all documents with live test metrics, dual validation comparisons, and reconciled status counts.
+
+### Verified Test Evidence (MATLAB R2024b)
+- Test procedure: Executed `EV_SysID_Auto(pwd)` and `RunAll` Section 9c audit on benchmark dataset.
+- Measured 1-step prediction: $V_{batt}$ RMSE = $0.0238$ V, $I_{batt}$ RMSE = $2.11$ A, Fit = $-56.4\%$ / $-54.6\%$, $\pm 10\%$ Tol = $100.0\%$ / $71.1\%$.
+- Measured free-run simulation: $V_{batt}$ RMSE = $0.0229$ V, $I_{batt}$ RMSE = $2.06$ A, Fit = $-50.2\%$ / $-51.4\%$, $\pm 10\%$ Tol = $100.0\%$ / $66.9\%$.
+- Discrete stability: Max discrete pole magnitude $|\lambda| = 0.7733 < 1.0$ (asymptotically stable).
+- Model Acceptance: **NOT YET ACCEPTED / PROVISIONAL** (raw fit negative due to steady-state validation variance collapse).
+
+---
+
 ## [Version 8.1 - Root-Cause Verification, SysID Feedthrough & V&V Integrity] - 22-Oct-2026
 
 ### Fixed

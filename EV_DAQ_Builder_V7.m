@@ -2274,7 +2274,20 @@ for k = 1:numel(keys)
         V.(key) = nan(size(tg));
     end
 end
-if isfield(V,'ibatt'), V.ibatt = abs(V.ibatt); end   % POSITIVE-CURRENT
+if isfield(V, 'ibatt')
+    % Audit battery current sign: Simscape Battery uses passive sign convention
+    % where discharge current leaving the positive terminal is negative.
+    % In EV powertrain & digital twin DAQ, positive convention is used for discharge.
+    % Audit mean during motoring rather than taking blind abs():
+    mean_ibatt = mean(V.ibatt, 'omitnan');
+    if mean_ibatt < 0
+        ci.BatteryCurrentSign = 'Simscape passive (negative on discharge) -> inverted to positive discharge';
+        V.ibatt = -V.ibatt;  % Invert sign to maintain charging/discharging distinction
+    else
+        ci.BatteryCurrentSign = 'Positive on discharge -> kept unchanged';
+    end
+    ci.Notes{end+1} = sprintf('BatteryCurrent sign audit: %s', ci.BatteryCurrentSign);
+end
 if ~isfield(V,'rpm_ref') && isfield(V,'rpm')
     V.rpm_ref = min(P.rpm_ramp*tg, P.rpm_ref);  ci.RefDerived = true;
     ci.Notes{end+1} = 'RPMReference DERIVED = min(rpm_ramp*t, rpm_ref) because the model does not log the reference';
@@ -2561,6 +2574,8 @@ if nargin >= 3 && ~isempty(CD) && isfield(CD,'OK') && CD.OK && height(CD.Summary
 else
     rows(end+1,:) = na('VV-013','Cell voltage limit','CellVoltage'); rows(end+1,:) = na('VV-014','Cell voltage spread','CellVoltage'); %#ok<AGROW>
 end
+% NOTE ON VV-015: Requirement ID VV-015 was skipped in the historical specification numbering
+% sequence (jumping from VV-014 to VV-016). There are exactly 24 active V&V requirements (VV-000..024).
 % VV-016  energy-based efficiency
 if any(mk) && trapz(t(mk), pbt(mk)) > 0 && any(isfinite(pmv))
     em = trapz(t(isfinite(pmv)), abs(pmv(isfinite(pmv))));  eb = trapz(t(mk), pbt(mk));

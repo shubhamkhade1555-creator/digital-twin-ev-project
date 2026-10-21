@@ -352,6 +352,105 @@ if all(ismember({'MotorCurrent', 'BatteryVoltage', 'BatteryCurrent', 'RPM'}, vn)
 else
     R = rarec(R, say, 'WARN', 'BlackBox vs archive', 'archive table has other column names - comparison skipped');
 end
+
+%% ---- 9c. Black-Box SysID Validation Audit (Dual Validation: 1-Step & Free-Run) ----
+say('[RunAll] 9c. Auditing Black-Box SysID model and validation data ...');
+bbMatFile = fullfile(root, 'EV_BlackBox_SysID.mat');
+if ~isempty(result.runDir) && isfile(fullfile(result.runDir, 'EV_BlackBox_SysID.mat'))
+    bbMatFile = fullfile(result.runDir, 'EV_BlackBox_SysID.mat');
+end
+
+if isfile(bbMatFile)
+    try
+        S_bb = load(bbMatFile);
+        if isfield(S_bb, 'sys_blackbox') && isfield(S_bb, 'Zv') && isfield(S_bb, 'Ys') && isfield(S_bb, 'Y0')
+            sys_m = S_bb.sys_blackbox;
+            Zv_norm = S_bb.Zv;
+            Ys_val = S_bb.Ys;
+            Y0_val = S_bb.Y0;
+            
+            % Critical rule: Do NOT feed physical unscaled inputs to normalized model.
+            % Zv_norm already contains normalized inputs and outputs.
+            [yh_1step, fit_1step] = compare(Zv_norm, sys_m, 1);
+            [yh_freerun, fit_freerun] = compare(Zv_norm, sys_m, Inf);
+            
+            % Convert outputs to physical engineering units (V, A)
+            Y_true_phys = Zv_norm.OutputData .* Ys_val + Y0_val;
+            Y_1step_phys = yh_1step.OutputData .* Ys_val + Y0_val;
+            Y_freerun_phys = yh_freerun.OutputData .* Ys_val + Y0_val;
+            
+            % Calculate metrics separately for voltage and current
+            err_1step = Y_true_phys - Y_1step_phys;
+            err_freerun = Y_true_phys - Y_freerun_phys;
+            
+            rmse_1step = sqrt(mean(err_1step.^2, 1));
+            mae_1step = mean(abs(err_1step), 1);
+            bias_1step = mean(err_1step, 1);
+            
+            rmse_freerun = sqrt(mean(err_freerun.^2, 1));
+            mae_freerun = mean(abs(err_freerun), 1);
+            bias_freerun = mean(err_freerun, 1);
+            
+            % Percentage within +/-10% of physical mean
+            tol_V = 0.10 * mean(abs(Y_true_phys(:,1)));
+            tol_I = 0.10 * mean(abs(Y_true_phys(:,2)));
+            pct_V_1step = 100 * mean(abs(err_1step(:,1)) <= tol_V);
+            pct_I_1step = 100 * mean(abs(err_1step(:,2)) <= tol_I);
+            pct_V_free = 100 * mean(abs(err_freerun(:,1)) <= tol_V);
+            pct_I_free = 100 * mean(abs(err_freerun(:,2)) <= tol_I);
+            
+            say('[RunAll]    SysID 1-Step Validation  : Vbatt RMSE=%.4f V, MAE=%.4f V | Ibatt RMSE=%.2f A, MAE=%.2f A', ...
+                rmse_1step(1), mae_1step(1), rmse_1step(2), mae_1step(2));
+            say('[RunAll]    SysID Free-Run Simulation: Vbatt RMSE=%.4f V, MAE=%.4f V | Ibatt RMSE=%.2f A, MAE=%.2f A', ...
+                rmse_freerun(1), mae_freerun(1), rmse_freerun(2), mae_freerun(2));
+            say('[RunAll]    Raw NRMSE Fit (1-Step)   : Vbatt=%6.1f%%, Ibatt=%6.1f%%', fit_1step(1), fit_1step(2));
+            say('[RunAll]    Raw NRMSE Fit (Free-Run) : Vbatt=%6.1f%%, Ibatt=%6.1f%%', fit_freerun(1), fit_freerun(2));
+            say('[RunAll]    Samples in +/-10%% Tol   : Vbatt=%.1f%%, Ibatt=%.1f%% (Free-Run)', pct_V_free, pct_I_free);
+            
+            % Report 1-step and free-run results separately for each output
+            outNames = {'Voltage', 'Current'};
+            outUnits = {'V', 'A'};
+            rmseThresh = [0.50, 5.00];
+            pct_tol_1step = [pct_V_1step, pct_I_1step];
+            pct_tol_free = [pct_V_free, pct_I_free];
+            
+            for k = 1:2
+                % One-step prediction audit
+                pass_1s = rmse_1step(k) <= rmseThresh(k);
+                R = rarec(R, say, rapf(pass_1s, 'FAIL'), ...
+                    sprintf('SysID %s Error (1-Step)', outNames{k}), ...
+                    sprintf('RMSE = %.4f %s, MAE = %.4f %s, Bias = %+.4f %s, Fit = %6.1f%%, +/-10%% tol = %.1f%%', ...
+                    rmse_1step(k), outUnits{k}, mae_1step(k), outUnits{k}, bias_1step(k), outUnits{k}, fit_1step(k), pct_tol_1step(k)));
+                
+                % Free-run simulation audit
+                pass_fr = rmse_freerun(k) <= rmseThresh(k);
+                R = rarec(R, say, rapf(pass_fr, 'FAIL'), ...
+                    sprintf('SysID %s Error (Free-Run)', outNames{k}), ...
+                    sprintf('RMSE = %.4f %s, MAE = %.4f %s, Bias = %+.4f %s, Fit = %6.1f%%, +/-10%% tol = %.1f%%', ...
+                    rmse_freerun(k), outUnits{k}, mae_freerun(k), outUnits{k}, bias_freerun(k), outUnits{k}, fit_freerun(k), pct_tol_free(k)));
+                
+                % Raw NRMSE fit audit: flag negative fit without masking
+                if fit_freerun(k) <= 0
+                    R = rarec(R, say, 'WARN', sprintf('SysID %s Raw Fit (Free-Run)', outNames{k}), ...
+                        sprintf('Raw NRMSE fit is negative (%6.1f%%); output variance is too small in steady-state validation', fit_freerun(k)));
+                end
+            end
+            
+            % Model stability audit
+            stb_bb = isstable(sys_m);
+            max_pole_bb = max(abs(pole(sys_m)));
+            R = rarec(R, say, rapf(stb_bb, 'FAIL'), 'SysID Model Stability', ...
+                sprintf('Max pole magnitude = %.4f (< 1.0 required)', max_pole_bb));
+        else
+            R = rarec(R, say, 'WARN', 'SysID Validation', 'EV_BlackBox_SysID.mat missing required fields');
+        end
+    catch ME_bb
+        R = rarec(R, say, 'WARN', 'SysID Validation', ME_bb.message);
+    end
+else
+    R = rarec(R, say, 'WARN', 'SysID Validation', 'EV_BlackBox_SysID.mat not found');
+end
+
 %% ---- 9b + 10. numbered clean data, comparison graphs, reference Excel (EV_MakeReference) ---------------------
 % EV_MakeReference runs inside the Simulink StopFcn chain (EV_DAQ_Builder_V7 step 14c), so a plain Run in Simulink saves
 % the same files. RunAll waits for it and only calls it itself if the hook did not run.

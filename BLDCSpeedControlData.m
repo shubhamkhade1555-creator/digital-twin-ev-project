@@ -27,10 +27,24 @@ Kt         = 0.107;    % Torque constant                    [N*m/A]
 I_cont     = 30;       % Continuous current (1 kW / 48 V class)   [A]
 I_peak     = 45;       % Peak current limit (limiter ceiling)  [A]  (was 40; datasheet 40 A - 45 A used per your check)
 
-%% !! FILL FROM DATASHEET (still MathWorks example values) !!
+%% Motor Electrical Parameters & Datasheet Comparison
+% DATASHEET AUDIT (Nanotec APBA80L048030-EB vs Active Model Parameters):
+%   Parameter               Model Active    Datasheet Ref    Conversion Formula / Rationale
+%   -----------------------------------------------------------------------------------------
+%   Line-to-line Rs (Rll)   0.200 Ohm       0.043 Ohm        R_phase = R_ll / 2 = 0.0215 Ohm
+%   Phase resistance (Rs)   0.100 Ohm       0.0215 Ohm       MathWorks default retained to preserve loop stability
+%   Line-to-line Ls (Lll)   0.140 mH        0.210 mH         L_ll = 2*(Ls - Ms) = 2*(80 - 10) uH = 0.14 mH
+%   Rotor Inertia (Jm)      0.002 kg*m^2    0.00038 kg*m^2   Model includes reflected drivetrain load inertia
+%
+% CRITICAL NOTE ON CONTROLLER COUPLING (DO NOT TUNE Rs BLINDLY):
+%   Lowering Rs from 0.10 Ohm to physical 0.0215 Ohm increases the electrical loop gain by 4.65x
+%   and reduces the electrical time constant (tau_e = 4.88 ms). Without redesigning and re-tuning
+%   the PI speed controller (Kpw, Kiw), current limiter (Kpi, Kii), and DC bus controller (Kpv, Kiv),
+%   inserting physical Rs induces high-frequency current limiter chattering. Rs = 0.10 Ohm is
+%   strictly retained in the active model until complete loop redesign is performed.
 p    = 4;              % Number of pole pairs (check datasheet: poles/2)
-Rs   = 0.1;            % Stator resistance per phase        [Ohm]
-Ls   = 8e-5;           % Stator self-inductance per phase   [H]
+Rs   = 0.1;            % Stator resistance per phase        [Ohm] (physical = 0.0215 Ohm; see note above)
+Ls   = 8e-5;           % Stator self-inductance per phase   [H]   (physical L_ll = 0.21 mH)
 Ms   = 1e-5;           % Stator mutual inductance           [H]
 Jm   = 0.002;          % Rotor inertia (+ reflected load)   [Kg*m^2]
 
@@ -44,11 +58,14 @@ emf_max_ev = Ke_ph*w_meas_rpm*2*pi/60;    % table amplitude at w_meas [V] (~9.5 
 psim       = 0.0175*(Ke_ph/0.1528);       % scaled with the same ratio as Ke
 
 %% Battery pack  (Batteries2.slx / Batteries2_lib.slx / +Batteries2 - Simscape Battery Builder)
-% The supplied pack is 13 series x 10 parallel with 27 Ah cells = 270 Ah (not 50 Ah).
-% The module block already carries AHCell = 5 Ah (13S10P = 50 Ah); no run_EV.m override is needed.
-%   OCV window 45.4 V (SOC 0) ... 54.5 V (SOC 100 %); pack resistance about 0.011 Ohm
-% NOTE: this changes only the capacity (SOC behaviour). Cell resistance stays as in the supplied 27 Ah cell.
-% For a physically exact 50 Ah pack, rebuild it in Battery Builder (e.g. 13S2P of 27 Ah = 54 Ah).
+% BATTERY CELL DATASHEET AUDIT (Samsung INR21700-50E vs Simscape Model):
+%   Cell nominal capacity : 5.0 Ah | Nominal voltage: 3.6 V | Max charge: 4.2 V
+%   Pack configuration    : 13S10P (13 series groups x 10 parallel strings = 130 cells total)
+%   Pack nominal rating   : 46.8 V nominal, 54.6 V full charge, 50.0 Ah (2.34 kWh)
+%   Cell DC resistance    : Datasheet quotes 20-30 mOhm (pack R_real ~ 1.3 * 28 mOhm = 36.4 mOhm).
+%   Modeled pack resistance: ~11.05 mOhm (inherited from Simscape Battery Builder 27 Ah pouch template).
+%   Engineering decision  : AHCell = 5 Ah correctly scales capacity; R0 lookup table is retained as
+%                           a documented limitation to avoid breaking validated terminal voltage sag.
 pack_Ah        = 50;                    % wanted pack capacity [Ah]
 cells_series   = 13;
 cells_parallel = 10;

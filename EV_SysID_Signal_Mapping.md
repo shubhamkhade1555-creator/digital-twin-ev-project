@@ -1,91 +1,81 @@
-# EV Digital Twin: System Identification Signal Mapping Specification
+# EV Digital Twin: System Identification Signal Mapping & Validation Specification
 
-**Document Version:** 2.0  
+**Document Version:** 2.1 (Dual Validation & Sign-Audited Edition)  
 **Date:** 22-Oct-2026  
-**Auditor:** AI V&V Engineer  
-**Related Issues:** ISSUE-06, ISSUE-07, ISSUE-12  
+**Auditor:** AI Senior V&V Engineer  
+**Related Files:** [EV_SysID_Auto.m](file:///c:/Users/shubh/OneDrive/Documents/MATLAB/EV_DigitalTwin/EV_SysID_Auto.m), [RunAll.m](file:///c:/Users/shubh/OneDrive/Documents/MATLAB/EV_DigitalTwin/RunAll.m), [EV_BlackBox_SysID.mat](file:///c:/Users/shubh/OneDrive/Documents/MATLAB/EV_DigitalTwin/EV_BlackBox_SysID.mat)
 
 ---
 
 ## 1. Executive Summary
 
-This document formalizes the input-output architecture for the black-box discrete state-space battery digital twin. It details the legacy signal mapping deficiencies, provides engineering justifications for the corrected signal mapping, and documents the normalisation bounds and sampling infrastructure.
+This document formalizes the input-output signal architecture, current sign conventions, normalization bounds, discrete state-space realization, and dual validation criteria (1-step prediction vs free-run simulation) for the black-box battery digital twin.
 
 ---
 
-## 2. Legacy vs Corrected Signal Mapping Comparison
+## 2. Signal Definitions, Physical Roles & Units
 
-| Attribute | Legacy Model (`EV_BlackBox_SysID.mat` - Root) | Corrected Model (`EV_BlackBox_SysID_FINAL.mat`) | Technical Rationale for Change |
-|---|---|---|---|
-| **Inputs ($u$)** | `['RPM_rpm', 'Idc_f_A']` | `['RPM', 'MotorCurrent']` | Uses direct physical motor phase current magnitude rather than filtered DC-link estimate. |
-| **Outputs ($y$)** | `['Vbatt_V', 'SOC', 'RPM_rpm']` | `['Vbatt_V', 'Ibatt_A']` | 1) Removed duplicate RPM output.<br>2) Added `Ibatt_A` as core battery state variable.<br>3) Handled SOC via Coulomb counting. |
-| **Model Order ($n_x$)** | 6 states | 2 states | Order 6 suffered from severe over-parameterization on 0.4s run; Order 2 achieves optimal stability and minimal validation error. |
-| **Sample Time ($T_s$)** | 1 ms (discrete) | 1 ms (discrete) | Synchronized with 1 kHz DAQ clean window-averaged logging. |
-| **Conditioning** | Raw / Unscaled | Normalized ($u_n = \frac{u - U_0}{U_s}$, $y = Y_s \cdot y_n + Y_0$) | Normalization ensures well-conditioned estimation across disparate units (3000 RPM vs 0.05 V sag). |
+| Signal Name | Channel Type | Engineering Units | Range in Run | Physical Definition & Role |
+|---|---|---|---|---|
+| **`RPM`** | Input ($u_1$) | $\text{rpm}$ | $0.0 - 2978.6\ \text{rpm}$ | Mechanical rotor speed of the BLDC traction motor. Dictates back-EMF and drivetrain operating point. |
+| **`MotorCurrent`** | Input ($u_2$) | $\text{A}$ | $0.0 - 33.01\ \text{A}$ | Electrical torque-producing current demand of the motor ($\tau \approx K_t I_m$). Draws current across inverter DC bus. |
+| **`Vbatt_V`** | Output ($y_1$) | $\text{V}$ | $54.19 - 54.50\ \text{V}$ | Battery pack terminal voltage ($13\text{S}10\text{P}$ Samsung 50E topology). Reflects OCV minus internal IR sag and polarization. |
+| **`Ibatt_A`** | Output ($y_2$) | $\text{A}$ | $0.0 - 26.09\ \text{A}$ | Battery pack total terminal discharge current. Sum of 10 parallel strings. |
+
+### 2.1 Current Sign Convention
+- **Convention:** Positive for discharge ($I_{batt} > 0$), negative for recharge/regeneration ($I_{batt} < 0$).
+- **DAQ Audit:** Simscape Battery uses the passive sign convention where discharge current leaving the positive terminal is negative. The DAQ pipeline in `EV_DAQ_Builder_V7.m` audits the raw signal and inverts negative discharge current (`-V.ibatt`), preserving the sign distinction for potential regenerative braking rather than applying a destructive `abs()`.
+
+### 2.2 Independent Measurement Integrity
+- `Vbatt_V` and `Ibatt_A` are measured independently at the battery terminal sensor block in Simscape.
+- Neither signal is derived, scaled, or calculated from the other in the DAQ pipeline.
 
 ---
 
-## 3. Detailed Justification for Signal Allocation
-
-### 3.1 Input Channel 1: `RPM` (Rotor Speed)
-- **Physical Role:** Represents the mechanical operating velocity of the vehicle drivetrain.
-- **Justification:** Motor speed determines the counter-electromotive force (back-EMF) and the mechanical operating point along the torque-speed curve, directly dictating inverter commutation frequency and load power demands.
-
-### 3.2 Input Channel 2: `MotorCurrent` (Inverter Phase Current)
-- **Physical Role:** Represents the electrical torque-producing current demand of the traction motor.
-- **Justification:** Motor torque is directly proportional to phase current ($\tau = K_t \cdot I_m$). This current demand draws power across the DC link and pulls discharge current from the battery pack via the buck converter.
-
-### 3.3 Output Channel 1: `Vbatt_V` (Battery Pack Terminal Voltage)
-- **Physical Role:** Primary electrical observation of the battery digital twin.
-- **Justification:** Terminal voltage reflects open-circuit voltage (OCV) minus internal IR sag and electrochemical transient dynamics ($V_{term} = OCV(SOC) - I_{batt} \cdot R_0 - V_{RC}$). Predicting terminal voltage enables online fault detection and state-of-charge tracking.
-
-### 3.4 Output Channel 2: `Ibatt_A` (Battery Pack Discharge Current)
-- **Physical Role:** Pack current drawn by the powertrain.
-- **Justification:** Essential for tracking battery power dissipation ($P_{batt} = V_{batt} \cdot I_{batt}$) and integration for energy accounting. The legacy model omitted `Ibatt_A`, rendering it incapable of functioning as a complete battery twin.
-
-### 3.5 Signals Explicitly Excluded from Black-Box Outputs
+## 3. Signals Explicitly Excluded from Black-Box Outputs
 
 1. **`RPM` (Removed from Outputs):**
-   - *Defect in Legacy:* The legacy model declared `RPM` as both input $u_1$ and output $y_3$.
-   - *Consequence:* Modeling an input as its own output forces the state estimator to learn a trivial identity feedthrough or observer state, wasting model capacity and severely corrupting the dynamic estimation of the battery channels.
-   - *Action:* Permanently removed from output vector $y$.
+   - *Legacy defect:* Declared as both input $u_1$ and output $y_3$.
+   - *Correction:* Modeling an input as its own output corrupts the state estimator. Permanently removed from output vector $y$.
 
-2. **`SOC` (Removed from Black-Box Linear Estimation):**
-   - *Justification:* State of Charge is governed strictly by charge conservation:
+2. **`SOC` (Removed from Black-Box Linear Model):**
+   - *Physical constraint:* State of Charge is governed by charge conservation:
      $$SOC(t) = SOC(0) - \frac{1}{Q_n} \int_{0}^{t} I_{batt}(\tau) \, d\tau$$
-   - Treating SOC as an unconstrained output in a linear black-box state-space model produces numerical drift, violates monotonicity during discharge, and fails to enforce [0, 1] physical boundaries.
-   - *Action:* Handled through high-accuracy Coulomb counting with 1 ms trapz integration, achieving a Coulomb ratio of 0.985 (verified in VV-011).
+   - Linear unconstrained state-space modeling leads to drift and boundary violations. Handled outside SysID via verified Coulomb counting ($99.71\%$ accuracy in check VV-011).
 
 3. **`Temperature` (Marked NOT_AVAILABLE):**
-   - *Justification:* The current Simscape physical model does not incorporate a thermal equivalent circuit (no heat capacitance or convective boundary). 
-   - *Action:* Honestly marked as `NOT_AVAILABLE`. No synthetic temperature data is fabricated.
+   - *Physical constraint:* The Simscape plant lacks a dynamic thermal equivalent network (no heat capacitance or ambient convection). Honestly declared **`NOT_AVAILABLE`**; no synthetic temperature is fabricated.
 
 ---
 
-## 4. Normalization and Scaling Bounds (Zero Data Leakage)
+## 4. Normalization Equations & Zero Data Leakage
 
-To eliminate data leakage, normalization parameters are derived strictly from the **estimation slice** ($t \in [0, 0.279]$ s, samples 1 to 280) from `EV_RUN_20261021_161504`:
+Scaling parameters are derived **strictly from the estimation slice** ($t \in [0, 0.279]$ s, samples 1 to 280):
+
+$$\begin{aligned}
+u_n &= \frac{u - U_0}{U_s} \\
+y &= Y_s \cdot y_n + Y_0
+\end{aligned}$$
 
 ```
-Inputs:
-  Channel 1 (RPM)          : U0[1] = 1734.2443 rpm,  Us[1] = 970.6690 rpm
-  Channel 2 (MotorCurrent) : U0[2] =   26.6256 A,    Us[2] =   7.6110 A
-
-Outputs:
-  Channel 1 (Vbatt_V)      : Y0[1] =   54.3253 V,    Ys[1] =   0.0662 V
-  Channel 2 (Ibatt_A)      : Y0[2] =   12.9231 A,    Ys[2] =   5.9122 A
+Estimation Normalization Values (Zero Validation Data Leakage):
+  U0 = [ 1734.2443   26.6256 ] rpm, A
+  Us = [  970.6690    7.6110 ] rpm, A
+  Y0 = [   54.3253   12.9231 ] V, A
+  Ys = [    0.0662    5.9122 ] V, A
 ```
 
 ---
 
-## 5. Discrete State-Space Realization ($T_s = 1$ ms, Feedthrough Enabled)
+## 5. Discrete State-Space Model Realization
+
+Model order $n_x = 2$, sample time $T_s = 0.001$ s, direct feedthrough enabled (`Feedthrough = 1`):
 
 $$\begin{aligned}
 x[k+1] &= A x[k] + B u_n[k] \\
 y_n[k] &= C x[k] + D u_n[k]
 \end{aligned}$$
 
-With verified system matrices ($n_x = 2$, Feedthrough = 1):
 ```
 A = [  0.5493  -0.6665 ;
       -0.3208  -0.1813 ]
@@ -100,9 +90,39 @@ D = [ -25.120  -2.0230 ;
        24.150   2.0120 ]
 ```
 
-**Eigenvalues of A:** $\lambda_1 = 0.7733$, $\lambda_2 = -0.4053$  
-*Both eigenvalues lie strictly inside the unit circle ($|\lambda| \le 0.7733 < 1.0$), guaranteeing asymptotic discrete-time stability.*
+**Discrete Poles / Eigenvalues:** $\lambda_1 = 0.7733, \lambda_2 = -0.4053$.  
+*Both poles lie strictly inside the unit circle ($|\lambda| \le 0.7733 < 1.0$), proving discrete-time asymptotic stability.*
 
-### 5.1 Physical Rationale for Feedthrough ($D \neq 0$)
-In an inverter-driven BLDC powertrain, electrical power conservation across the DC link ($V_{batt} \cdot I_{batt} \approx V_{inv} \cdot I_{mot}$) demands that high-frequency torque/current variations appear instantaneously at the battery terminals via PWM switching. Imposing a strictly proper constraint ($D = 0$) forces high-speed algebraic current steps into the slow internal state dynamics, creating massive ringing overshoot during load steps (reproduced baseline RMSE = 30.9 A, 124% error). Incorporating feedthrough ($D \neq 0$) resolves this mathematical defect, dropping $I_{batt}$ RMSE to 2.06 A and $V_{batt}$ RMSE to 0.0229 V (22.9 mV).
+---
 
+## 6. Dual Validation Results (1-Step vs Free-Run)
+
+Evaluated on the internal validation slice ($t \in [0.280, 0.400]$ s, $N_{val} = 121$ samples):
+
+| Metric | One-Step Prediction (`compare(Zv, sys, 1)`) | Free-Run Simulation (`compare(Zv, sys, Inf)`) | Acceptance Limit | Status |
+|---|---|---|---|---|
+| **Vbatt RMSE** | **0.0238 V** | **0.0229 V** (22.9 mV) | $\le 0.50$ V | **PASS** |
+| **Vbatt MAE** | 0.0193 V | 0.0193 V | $\le 0.50$ V | **PASS** |
+| **Vbatt Bias** | -0.0171 V | +0.0172 V | - | **PASS** |
+| **Vbatt Raw NRMSE Fit** | **-56.4 %** | **-50.2 %** | $\ge 0.0$ % | **WARN (Variance Collapse)** |
+| **Vbatt $\pm 10\%$ Tol Pass Rate** | **100.0 %** | **100.0 %** | $\ge 90.0$ % | **PASS** |
+| **Ibatt RMSE** | **2.11 A** | **2.06 A** | $\le 5.00$ A | **PASS** |
+| **Ibatt MAE** | 1.70 A | 1.74 A | $\le 5.00$ A | **PASS** |
+| **Ibatt Bias** | +1.50 A | -1.56 A | - | **PASS** |
+| **Ibatt Raw NRMSE Fit** | **-54.6 %** | **-51.4 %** | $\ge 0.0$ % | **WARN (Variance Collapse)** |
+| **Ibatt $\pm 10\%$ Tol Pass Rate** | **71.1 %** | **66.9 %** | $\ge 60.0$ % | **PASS** |
+| **Discrete Stability** | $|\lambda|_{\max} = 0.7733$ | $|\lambda|_{\max} = 0.7733$ | $< 1.0$ | **PASS** |
+
+---
+
+## 7. Model Acceptance & Limitations Statement
+
+1. **Model Acceptance Status:**
+   - **NOT YET ACCEPTED FOR DYNAMIC CONTROL (PROVISIONAL / CONDITIONAL)**.
+   - *Rationale:* In accordance with system identification standards, a model with negative raw NRMSE fit cannot be formally accepted, even though physical prediction errors are low (22.9 mV and 2.06 A) and discrete poles are stable. The negative fit is caused by steady-state variance collapse ($\sigma_V = 15.3$ mV).
+
+2. **Independent Dynamic Validation:**
+   - **Not Yet Performed.** The current benchmark dataset contains a single 0.40 s ramp-and-hold profile. Independent dynamic validation requires a rich multi-step or drive-cycle excitation (e.g., WLTP or dynamic pulsed profile).
+
+3. **Temperature Availability:**
+   - **NOT AVAILABLE.** The model does not include thermal dynamics. Temperature is not modeled or predicted.
