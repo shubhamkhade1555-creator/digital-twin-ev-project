@@ -111,7 +111,13 @@ if isfile(modelFile)
     yOne = double(y1.OutputData) .* reshape(S.Ys,1,[]) + reshape(S.Y0,1,[]);
     yFree = double(yf.OutputData) .* reshape(S.Ys,1,[]) + reshape(S.Y0,1,[]);
     nVal = size(yTrue,1);
-    tVal = t(end) - (nVal-1:-1:0)' .* Ts;
+    if isfield(S, 'tv') && ~isempty(S.tv) && numel(S.tv) == nVal
+        tVal = double(S.tv(:));
+    elseif isprop(Zv, 'SamplingInstants') && ~isempty(Zv.SamplingInstants) && numel(Zv.SamplingInstants) == nVal
+        tVal = double(Zv.SamplingInstants(:));
+    else
+        tVal = t(end) - (nVal-1:-1:0)' .* Ts;
+    end
     names = {'Battery voltage','Battery current'};
     units = {'V','A'};
     safeNames = {'Voltage','Current'};
@@ -144,18 +150,38 @@ if isfile(modelFile)
     writetable(Metrics, fullfile(dirs{3},'SysID_Validation_Metrics.csv'));
     created{end+1} = fullfile(dirs{3},'SysID_Validation_Metrics.csv');
 
-    % Order-sweep plot if sweep results exist in the MAT file.
-    if isfield(S,'sweep') && ~isempty(S.sweep) && size(S.sweep,2) >= 7
-        sw = S.sweep;
-        f = newFig();
-        plot(sw(:,1),sw(:,3),'o-', 'DisplayName','Voltage 1-step fit'); hold on;
-        plot(sw(:,1),sw(:,4),'o-', 'DisplayName','Current 1-step fit');
-        plot(sw(:,1),sw(:,5),'s--','DisplayName','Voltage free-run fit');
-        plot(sw(:,1),sw(:,6),'s--','DisplayName','Current free-run fit');
-        yline(0,':k','DisplayName','Zero fit');
-        finishFig(f, fullfile(dirs{3},'SysID_ModelOrder_Fit_Comparison.png'), ...
-            'System Identification model-order comparison', 'Model order [states]', 'Raw fit [%]');
-        created{end+1} = fullfile(dirs{3},'SysID_ModelOrder_Fit_Comparison.png');
+    % Order-sweep plot: filter for finite, plausible fit metrics (< 1e4)
+    if isfield(S,'sweep') && ~isempty(S.sweep) && size(S.sweep,2) >= 6
+        sw = double(S.sweep);
+
+        % Expected columns:
+        % 1=order, 3=voltage one-step fit, 4=current one-step fit,
+        % 5=voltage free-run fit, 6=current free-run fit.
+        fitCols = [3 4 5 6];
+        valid = all(isfinite(sw(:,[1 fitCols])),2) ...
+              & all(abs(sw(:,fitCols)) < 1e4,2);
+
+        swPlot = sw(valid,:);
+
+        if ~isempty(swPlot)
+            f = newFig();
+            plot(swPlot(:,1),swPlot(:,3),'o-', ...
+                'DisplayName','Voltage 1-step fit');
+            hold on;
+            plot(swPlot(:,1),swPlot(:,4),'o-', ...
+                'DisplayName','Current 1-step fit');
+            plot(swPlot(:,1),swPlot(:,5),'s--', ...
+                'DisplayName','Voltage free-run fit');
+            plot(swPlot(:,1),swPlot(:,6),'s--', ...
+                'DisplayName','Current free-run fit');
+            yline(0,':k','DisplayName','Zero fit');
+            finishFig(f, fullfile(dirs{3}, ...
+                'SysID_ModelOrder_Fit_Comparison.png'), ...
+                'System Identification model-order comparison', 'Model order [states]', 'Raw fit [%]');
+            created{end+1} = fullfile(dirs{3},'SysID_ModelOrder_Fit_Comparison.png');
+        else
+            warning('EV_BBPlots:NoValidSweep', 'No valid model-order fit rows. Inspect the sweep data.');
+        end
     end
 else
     warning('EV_BBPlots:NoModel', ...
