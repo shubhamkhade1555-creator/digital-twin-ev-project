@@ -4,7 +4,7 @@
 **Lead Auditor:** Senior MATLAB/Simulink & EV Powertrain V&V Engineer  
 **Date of Completion:** 22-Oct-2026  
 **Primary Baseline Run:** `EV_RUN_20261021_161504` ($t_{stop} = 0.40$ s, 401 samples, 14 channels)  
-**Deliverable Branch:** `audit/fix-validation-defects`  
+**Deliverable Branch:** `main` (Merged PR #1)  
 **Classification:** **Validated Level 2 Digital Shadow with Provenance & Verified Parametric Accounting**
 
 ---

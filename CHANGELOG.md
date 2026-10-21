@@ -4,6 +4,19 @@ All notable technical corrections, model reconciliations, and documentation chan
 
 ---
 
+## [Version 8.1 - Root-Cause Verification, SysID Feedthrough & V&V Integrity] - 22-Oct-2026
+
+### Fixed
+- **System Identification Feedthrough & 30.9 A RMSE Resolution (ISSUE-07):** Enabled direct feedthrough (`Feedthrough = 1`) in discrete state-space identification (`EV_SysID_Auto.m`). Resolved algebraic inverter current step overshoot, reducing $I_{batt}$ RMSE from $32.57$ A to $2.06$ A (<9% relative error) and $V_{batt}$ RMSE from $0.3616$ V to $0.0229$ V ($22.9$ mV). Confirmed discrete asymptotic stability ($|\lambda| \le 0.7733 < 1.0$).
+- **Zero Validation Data Leakage (ISSUE-07):** Confined normalization statistics calculation strictly to the estimation slice ($1:280$, $0$ to $0.279$ s), preventing validation data from leaking into scaling parameters.
+- **Unclipped Model Ranking (ISSUE-07):** Replaced hard-clipped fit score ranking with unclipped normalized validation error to allow transparent model order selection.
+- **Stop-Time Enforcement & Diagnostic Mode Separation (ISSUE-04, ISSUE-13):** Enforced minimum duration check ($t_{stop} \ge 0.350$ s; benchmark $0.400$ s) in `RunAll.m` under `FullValidation` mode; throws `RunAll:InsufficientDuration` if too short. Separated short runs under explicit `DiagnosticMode`.
+- **Root-Cause Register In-Place Update (ISSUE-17):** Synchronized all 18 issues (ISSUE-00 to ISSUE-17) across `EV_Digital_Twin_ROOT_CAUSE_REGISTER_FINAL.xlsx` with standard statuses (`PASS`, `FAIL`, `WARN`, `NOT VERIFIED`), test IDs, exact files, and before/after measurements.
+- **V&V Check Suite Integrity & 24-Check Register (ISSUE-16):** Documented root cause of missing check `VV-015` in `EV_DAQ_Builder_V7.m` source code. Complete 24-check suite + composite `OVERALL` row verified in sheet `Comprehensive_VV_Register` of `EV_VV_FINAL_RESULTS.xlsx` (21 PASS, 3 FAIL).
+- **Signal Mapping Specification (ISSUE-06):** Updated `EV_SysID_Signal_Mapping.md` with verified discrete state-space matrices ($A, B, C, D$), eigenvalues, and zero-leakage normalization parameters.
+
+---
+
 ## [Version 8.0 - Final Audit Baseline & Provenance Reconciliation] - 22-Oct-2026
 
 ### Added

@@ -62,43 +62,47 @@ This document formalizes the input-output architecture for the black-box discret
 
 ---
 
-## 4. Normalization and Scaling Bounds
+## 4. Normalization and Scaling Bounds (Zero Data Leakage)
 
-To prevent numerical ill-conditioning during subspace estimation, all channels are scaled using full-run sample statistics from `EV_RUN_20261021_161504`:
+To eliminate data leakage, normalization parameters are derived strictly from the **estimation slice** ($t \in [0, 0.279]$ s, samples 1 to 280) from `EV_RUN_20261021_161504`:
 
 ```
 Inputs:
-  Channel 1 (RPM)          : U0[1] = 2100.28 rpm,  Us[1] = 983.88 rpm
-  Channel 2 (MotorCurrent) : U0[2] =   27.85 A,    Us[2] =   6.64 A
+  Channel 1 (RPM)          : U0[1] = 1734.2443 rpm,  Us[1] = 970.6690 rpm
+  Channel 2 (MotorCurrent) : U0[2] =   26.6256 A,    Us[2] =   7.6110 A
 
 Outputs:
-  Channel 1 (Vbatt_V)      : Y0[1] =   54.29 V,    Ys[1] =   0.0770 V
-  Channel 2 (Ibatt_A)      : Y0[2] =   16.03 A,    Ys[2] =   6.8765 A
+  Channel 1 (Vbatt_V)      : Y0[1] =   54.3253 V,    Ys[1] =   0.0662 V
+  Channel 2 (Ibatt_A)      : Y0[2] =   12.9231 A,    Ys[2] =   5.9122 A
 ```
 
 ---
 
-## 5. Discrete State-Space Realization ($T_s = 1$ ms)
+## 5. Discrete State-Space Realization ($T_s = 1$ ms, Feedthrough Enabled)
 
 $$\begin{aligned}
 x[k+1] &= A x[k] + B u_n[k] \\
 y_n[k] &= C x[k] + D u_n[k]
 \end{aligned}$$
 
-With verified system matrices ($n_x = 2$):
+With verified system matrices ($n_x = 2$, Feedthrough = 1):
 ```
-A = [ 0.8322  -0.1924 ;
-     -0.4729   0.4090 ]
+A = [  0.5493  -0.6665 ;
+      -0.3208  -0.1813 ]
 
-B = [-0.7242   0.9108 ;
-      2.7390  -6.8860 ]
+B = [ -147.70   -2.668 ;
+      -198.10   -3.514 ]
 
-C = [ 1.2780   0.3417 ;
-     -1.2820  -0.3383 ]
+C = [  1.0270  -1.2270 ;
+      -1.0330   1.2250 ]
 
-D = [ 0.0000   0.0000 ;
-      0.0000   0.0000 ]
+D = [ -25.120  -2.0230 ;
+       24.150   2.0120 ]
 ```
 
-**Eigenvalues of A:** $\lambda_1 = 0.9890$, $\lambda_2 = 0.2522$  
-*Both eigenvalues lie strictly inside the unit circle ($|\lambda| < 1$), guaranteeing asymptotic stability.*
+**Eigenvalues of A:** $\lambda_1 = 0.7733$, $\lambda_2 = -0.4053$  
+*Both eigenvalues lie strictly inside the unit circle ($|\lambda| \le 0.7733 < 1.0$), guaranteeing asymptotic discrete-time stability.*
+
+### 5.1 Physical Rationale for Feedthrough ($D \neq 0$)
+In an inverter-driven BLDC powertrain, electrical power conservation across the DC link ($V_{batt} \cdot I_{batt} \approx V_{inv} \cdot I_{mot}$) demands that high-frequency torque/current variations appear instantaneously at the battery terminals via PWM switching. Imposing a strictly proper constraint ($D = 0$) forces high-speed algebraic current steps into the slow internal state dynamics, creating massive ringing overshoot during load steps (reproduced baseline RMSE = 30.9 A, 124% error). Incorporating feedthrough ($D \neq 0$) resolves this mathematical defect, dropping $I_{batt}$ RMSE to 2.06 A and $V_{batt}$ RMSE to 0.0229 V (22.9 mV).
+

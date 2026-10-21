@@ -3,7 +3,7 @@
 **Document Version:** 2.0 (Post-Audit Verified Edition)  
 **Date:** 22-Oct-2026  
 **Auditor:** AI Senior V&V Engineer  
-**Branch:** `audit/fix-validation-defects`  
+**Branch:** `main` (Merged PR #1)  
 **Audit Policy:** Strict Engineering Honesty ("Document every known deficiency without concealment")
 
 ---
