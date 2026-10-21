@@ -223,6 +223,7 @@ if nargin >= 1 && (ischar(varargin{1}) || isstring(varargin{1}))
             fprintf('[TIME] StartFcn hook: AutoInit %.2f s + session/live monitor %.2f s. The solver starts now.\n', tA1, toc(tA) - tA1);
             return
         case 'cleantap',    evCleanTap(MDL);  return
+        case 'sensors',     evEnsureBatteryScopes(MDL); return  % idempotent battery signal scopes
         case 'overrides'
             try, assignin('base','EV_T_init', tic); catch, end
             tH = tic;  evApplyOverrides(true);  evEnsureLoadProfile(MDL, true);
@@ -4373,17 +4374,81 @@ if bdIsLoaded(MDL)
     if ~strcmpi(get_param(MDL,'SimulationStatus'),'stopped')
         error('Model is running. Press STOP, wait for Ready, then run again.');
     end
+    % Keep the in-memory model: closing with flag 0 discarded unsaved sensor edits.
     userStop = p.Results.StopTime;
-    if isempty(userStop), userStop = evStopTime(MDL); end          % V7.8: the value typed in the toolbar
-    close_system(MDL,0);                       % reload from disk
-    load_system(fullfile(root,[MDL '.slx']));
-    if isfinite(userStop) && userStop > 0, set_param(MDL,'StopTime',sprintf('%.10g',userStop)); fprintf('[DAQ] Stop Time kept: %g s\n', userStop); end
+    if isempty(userStop), userStop = evStopTime(MDL); end
+    if isfinite(userStop) && userStop > 0
+        set_param(MDL,'StopTime',sprintf('%.10g',userStop));
+        fprintf('[DAQ] Stop Time kept: %g s\\n', userStop);
+    end
 elseif ~isempty(p.Results.StopTime)
-    load_system(fullfile(root,[MDL '.slx']));  set_param(MDL,'StopTime',sprintf('%.10g',p.Results.StopTime));
+    load_system(fullfile(root,[MDL '.slx']));
+    set_param(MDL,'StopTime',sprintf('%.10g',p.Results.StopTime));
 end
 fprintf('--- step 1: buck snubber -> exclude ---\n');            evModelFixes(MDL,1);
 if p.Results.Solver, fprintf('--- step 2: local solver -> Backward Euler ---\n'); evModelFixes(MDL,2); end
 if p.Results.Tune,   fprintf('--- step 4: Vdc filter T = 0.002 s ---\n');        evModelFixes(MDL,4); end
 fprintf('--- DAQ setup (builds + saves EV_BlackBox) %s ---\n', iif(p.Results.Run,'and simulation start','only'));
 feval(mfilename, 'Run', p.Results.Run);
+end
+
+%% ========================================================================
+%%  Ensure battery measurement Scopes (idempotent; taps existing logged sensor signals)
+%%  This does not alter Simscape power wiring or insert physical sensors.
+%%  It taps the existing voltage/current logger input signals, preserving model physics.
+%% ========================================================================
+function evEnsureBatteryScopes(MDL)
+if ~bdIsLoaded(MDL), load_system(MDL); end
+assert(strcmpi(get_param(MDL,'SimulationStatus'),'stopped'), ...
+    'Stop the model before creating battery measurement scopes.');
+
+defs = { ...
+    'Voltage', {'log_vcell','log_vbatt'}, 'Scope_BatteryVoltage_Sensor'; ...
+    'Current', {'log_icell','log_ibatt'}, 'Scope_BatteryCurrent_Sensor'};
+for k = 1:size(defs,1)
+    kind = defs{k,1}; candidates = defs{k,2}; scopeName = defs{k,3};
+    scopePath = [MDL '/' scopeName];
+    if getSimulinkBlockHandle(scopePath) ~= -1
+        fprintf('[DAQ] Existing %s kept: %s\\n',kind,scopePath);
+        continue
+    end
+    srcBlock = '';
+    for j = 1:numel(candidates)
+        hits = find_system(MDL,'SearchDepth',1,'LookUnderMasks','all', ...
+            'FollowLinks','on','Name',candidates{j});
+        if ~isempty(hits), srcBlock = hits{1}; break; end
+    end
+    if isempty(srcBlock)
+        warning('EV_DAQ_Builder_V7:BatteryScopeSourceMissing', ...
+            'No root-level voltage/current logger (%s) found; %s was not created.', ...
+            strjoin(candidates,', '), scopeName);
+        continue
+    end
+    ph = get_param(srcBlock,'PortHandles');
+    if isempty(ph.Inport) || ph.Inport(1) == -1
+        warning('EV_DAQ_Builder_V7:BatteryScopeNoInput', ...
+            'Logger %s has no input port; %s was not created.',srcBlock,scopeName);
+        continue
+    end
+    ln = get_param(ph.Inport(1),'Line');
+    if isempty(ln) || ln == -1
+        warning('EV_DAQ_Builder_V7:BatteryScopeNoSignal', ...
+            'Logger input %s is not wired; %s was not created.',srcBlock,scopeName);
+        continue
+    end
+    add_block('simulink/Sinks/Scope',scopePath, ...
+        'Position',[920 90+100*(k-1) 960 130+100*(k-1)], ...
+        'OpenAtSimulationStart','off');
+    sp = get_param(scopePath,'PortHandles');
+    src = get_param(ln,'SrcPortHandle');
+    if isempty(src) || src == -1
+        delete_block(scopePath);
+        warning('EV_DAQ_Builder_V7:BatteryScopeNoSourcePort', ...
+            'Cannot identify source port for %s; scope skipped.',srcBlock);
+        continue
+    end
+    add_line(MDL,src,sp.Inport(1),'autorouting','on');
+    fprintf('[DAQ] Added %s and wired it to existing logger signal from %s.\\n',scopeName,srcBlock);
+end
+save_system(MDL);
 end
