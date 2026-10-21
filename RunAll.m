@@ -467,22 +467,12 @@ if logical(rav('EV_BlackBox_PlotsV2', true)) && ~logical(rav('EV_DAQ_Fast', fals
     end
 elseif logical(rav('EV_DAQ_Fast', false))
     say('[RunAll] 10. FAST mode: graph generation skipped.');
-elseif logical(rav('EV_Ref_Skip', false))
-    say('[RunAll] 10. EV_Ref_Skip is enabled: legacy reference graphs skipped.');
 else
-    % Legacy reference-comparison plotting is opt-in only.
-    try
-        if isempty(result.runDir) || ~isfolder(result.runDir)
-            error('RunAll:noRunDir', 'run folder not found - legacy graphs skipped');
-        end
-        say('[RunAll] 10. Legacy reference-comparison plots enabled by configuration.');
-        EV_MakeReference(C, [], [], result.runDir);
-        [~, rn] = fileparts(result.runDir);
-        R = rarec(R, say, 'PASS', 'Legacy reference-comparison graphs', ...
-            fullfile('Simulation Logs', rn, 'Figures'));
-    catch ME
-        R = rarec(R, say, 'WARN', 'Legacy reference-comparison graphs', ME.message);
-    end
+    % Legacy EV_MakeReference graph path intentionally removed.
+    % All full-run plots must come from EV_BlackBox_ComparePlotsV2.m.
+    say('[RunAll] 10. V2 graph output not enabled or not found; legacy graph generation is disabled.');
+    R = rarec(R, say, 'WARN', 'Black-Box comparison plots V2', ...
+        'V2 graph output not found or V2 plotting disabled; legacy graph generation is disabled.');
 end
 
 result = rafinish(result, R, say, root, stamp, toc(tAll));
