@@ -43,22 +43,52 @@ fprintf('====================================================\n');
 
 %% ---- 1. read the battery data: archive clean data (1 ms window means) ----
 t = []; U = []; Y = []; labels_u = {}; labels_y = {};
+need = {'RPM','MotorCurrent','BatteryVoltage','BatteryCurrent'};
+C = [];
 try
     C = evalin('base', 'EV_DAQ_Clean');
-    need = {'RPM','MotorCurrent','BatteryVoltage','BatteryCurrent'};
-    if all(ismember(need, C.Properties.VariableNames))
-        M  = [C.RPM C.MotorCurrent C.BatteryVoltage abs(C.BatteryCurrent)];   % POSITIVE-CURRENT
-        ok = all(isfinite(M), 2);
-        t  = C.Time(ok);  M = M(ok,:);
-        U  = M(:,1:2);    Y = M(:,3:4);
-        labels_u = {'RPM','MotorCurrent'};
-        labels_y = {'Vbatt_V','Ibatt_A'};
-        chk = addRow(chk, 'Data source', 'PASS', 'EV_DAQ_Clean (1 ms window means, PWM ripple averaged)');
-    end
 catch
 end
+
+% Fallback to CSV if EV_DAQ_Clean is not in the base workspace
+if isempty(C) || ~istable(C) || ~all(ismember(need, C.Properties.VariableNames))
+    csvCandidates = {};
+    if nargin >= 1 && ~isempty(runDir) && isfolder(runDir)
+        dRun = dir(fullfile(runDir, 'EV_DAQ_Clean*.csv'));
+        for k = 1:numel(dRun)
+            csvCandidates{end+1} = fullfile(runDir, dRun(k).name); %#ok<AGROW>
+        end
+        csvCandidates{end+1} = fullfile(runDir, 'EV_FINAL_RESULTS.csv');
+        csvCandidates{end+1} = fullfile(runDir, 'EV_DAQ_Clean.csv');
+    end
+    csvCandidates{end+1} = 'EV_FINAL_RESULTS.csv';
+    csvCandidates{end+1} = 'EV_DAQ_Clean.csv';
+    for cp = csvCandidates
+        if isfile(cp{1})
+            try
+                C_try = readtable(cp{1});
+                if all(ismember(need, C_try.Properties.VariableNames))
+                    C = C_try;
+                    assignin('base', 'EV_DAQ_Clean', C);
+                    break;
+                end
+            catch
+            end
+        end
+    end
+end
+
+if istable(C) && all(ismember(need, C.Properties.VariableNames))
+    M  = [C.RPM C.MotorCurrent C.BatteryVoltage abs(C.BatteryCurrent)];   % POSITIVE-CURRENT
+    ok = all(isfinite(M), 2);
+    t  = C.Time(ok);  M = M(ok,:);
+    U  = M(:,1:2);    Y = M(:,3:4);
+    labels_u = {'RPM','MotorCurrent'};
+    labels_y = {'Vbatt_V','Ibatt_A'};
+    chk = addRow(chk, 'Data source', 'PASS', 'EV_DAQ_Clean (1 ms window means, PWM ripple averaged)');
+end
 if isempty(t)
-    chk = addRow(chk, 'Data source', 'FAIL', 'EV_DAQ_Clean not in the workspace - run the simulation first');
+    chk = addRow(chk, 'Data source', 'FAIL', 'EV_DAQ_Clean not in the workspace and no valid CSV found - run the simulation first');
     R = bail(chk);  return
 end
 t = t - t(1);
@@ -108,6 +138,7 @@ fprintf('[SysID] n4sid order sweep (direct feedthrough enabled; physical RMSE & 
 %% ---- 4. order sweep (dual validation: 1-step & free-run; unclipped ranking) ----------------
 n4o = n4sidOptions('Focus', 'prediction', 'EstimateCovariance', false);
 best = [];  bestN = 0;  bestScore = -Inf;
+bestEligible = false;
 bestFit_1step = [];  bestFit_free = [];
 bestRMSE_1step = [Inf Inf];  bestMAE_1step = [Inf Inf];  bestBias_1step = [Inf Inf];  bestTol_1step = [0 0];
 bestRMSE_free  = [Inf Inf];  bestMAE_free  = [Inf Inf];  bestBias_free  = [Inf Inf];  bestTol_free  = [0 0];
@@ -156,16 +187,38 @@ for q = 1:numel(cfg.orders)
         fprintf('[SysID]   nx=%d: stable=%d | 1-Step Fit: V=%5.1f%%, I=%5.1f%% | Free Fit: V=%5.1f%%, I=%5.1f%% | Free RMSE: V=%.4f V, I=%.2f A\n', ...
             nx, stb, fitq_1step(1), fitq_1step(2), fitq_free(1), fitq_free(2), rmse_free(1), rmse_free(2));
         
-        % Reject unstable candidates
-        if stb
-            % Ranking based on normalized prediction accuracy across outputs
-            norm_rmse_q = sqrt(mean((Zv.OutputData - yh_free.OutputData).^2, 1));
+        % Normalized free-run prediction accuracy across outputs
+        norm_rmse_q = sqrt(mean((Zv.OutputData - yh_free.OutputData).^2, 1));
+
+        if stb && all(isfinite(rmse_free)) && ...
+                all(isfinite(fitq_free)) && ...
+                all(isfinite(norm_rmse_q))
+
+            % A candidate must meet physical limits and have positive
+            % free-run fit for BOTH outputs to be eligible for acceptance.
+            eligible = rmse_free(1) <= cfg.rmse_V_max && ...
+                       rmse_free(2) <= cfg.rmse_I_max && ...
+                       all(fitq_free > 0);
+
+            % Still retain the best stable model for diagnostics if none
+            % meet acceptance criteria. Do not label it as accepted.
             rankScore = -mean(norm_rmse_q);
+
             if rankScore > bestScore
-                bestScore = rankScore;  best = s;  bestN = nx;
-                bestFit_1step = fitq_1step;  bestFit_free = fitq_free;
-                bestRMSE_1step = rmse_1step; bestMAE_1step = mae_1step; bestBias_1step = bias_1step; bestTol_1step = tol_1step;
-                bestRMSE_free  = rmse_free;  bestMAE_free  = mae_free;  bestBias_free  = bias_free;  bestTol_free  = tol_free;
+                bestScore = rankScore;
+                best = s;
+                bestN = nx;
+                bestFit_1step = fitq_1step;
+                bestFit_free = fitq_free;
+                bestRMSE_1step = rmse_1step;
+                bestMAE_1step = mae_1step;
+                bestBias_1step = bias_1step;
+                bestTol_1step = tol_1step;
+                bestRMSE_free = rmse_free;
+                bestMAE_free = mae_free;
+                bestBias_free = bias_free;
+                bestTol_free = tol_free;
+                bestEligible = eligible;
             end
         end
     catch ME
@@ -187,15 +240,17 @@ voltage_error_within_limit = (bestRMSE_free(1) <= cfg.rmse_V_max);
 current_error_within_limit = (bestRMSE_free(2) <= cfg.rmse_I_max);
 dynamic_validation_passes = (bestFit_free(1) > 0) && (bestFit_free(2) > 0);
 
-if model_stable && voltage_error_within_limit && current_error_within_limit && dynamic_validation_passes
+if model_stable && voltage_error_within_limit && current_error_within_limit && dynamic_validation_passes && bestEligible
     modelAccepted = true;
     modelVerdict = 'PASS';
     modelDetail = 'Model meets all stability, physical error, and dynamic fit criteria';
 else
     modelAccepted = false;
     modelVerdict = 'FAIL';
-    modelDetail = sprintf('NOT ACCEPTED: raw dynamic fit negative (V=%5.1f%%, I=%5.1f%%) due to steady-state validation variance collapse; physical error passes (V=%.4f V, I=%.2f A)', ...
-        bestFit_free(1), bestFit_free(2), bestRMSE_free(1), bestRMSE_free(2));
+    modelDetail = sprintf( ...
+        'NOT ACCEPTED: stable=%d, free-run fit V=%.2f%% and I=%.2f%%, RMSE V=%.4f V and I=%.3f A.', ...
+        model_stable, bestFit_free(1), bestFit_free(2), ...
+        bestRMSE_free(1), bestRMSE_free(2));
 end
 
 % Check: Stability
@@ -244,7 +299,7 @@ for k = 1:numel(bestFit_free)
         chk = addRow(chk, ['Raw Fit ' labels_y{k}], 'WARN', sprintf('%.1f %% (WARN >= %g)', f, cfg.fitWarn));
     else
         chk = addRow(chk, ['Raw Fit ' labels_y{k}], 'WARN', ...
-            sprintf('%.1f %% (Negative fit: steady-state validation variance collapse; physical RMSE is primary)', f));
+            sprintf('%.1f %% (negative free-run fit; below warning threshold %g%%)', f, cfg.fitWarn));
     end
 end
 
@@ -268,6 +323,7 @@ assignin('base', 'EV_BB_InputScale',  Us);  assignin('base', 'EV_BB_OutputScale'
 assignin('base', 'EV_BB_InputLabels', labels_u);  assignin('base', 'EV_BB_OutputLabels', labels_y);
 assignin('base', 'EV_Ze', Ze);  assignin('base', 'EV_Zv', Zv);
 assignin('base', 'EV_SysID_ModelAccepted', modelAccepted);
+assignin('base', 'EV_SysID_BestEligible', bestEligible);
 
 bbMat = fullfile(runDir, 'EV_BlackBox_SysID.mat');
 try
@@ -276,7 +332,7 @@ try
         'bestFit_1step', 'bestFit_free', ...
         'bestRMSE_1step', 'bestMAE_1step', 'bestBias_1step', 'bestTol_1step', ...
         'bestRMSE_free', 'bestMAE_free', 'bestBias_free', 'bestTol_free', ...
-        'metrics_1step', 'metrics_freerun', 'modelAccepted', 'sweep');
+        'metrics_1step', 'metrics_freerun', 'modelAccepted', 'bestEligible', 'sweep');
     chk = addRow(chk, 'Saved model', 'PASS', bbMat);
 catch ME
     chk = addRow(chk, 'Saved model', 'WARN', ['could not save .mat: ' ME.message]);

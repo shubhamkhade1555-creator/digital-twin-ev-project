@@ -1,5 +1,5 @@
 === EV Digital Twin - Black-Box System Identification Report ===
-Date            : 22-Oct-2026 02:39:48
+Date            : 22-Oct-2026 03:11:57
 Tool            : n4sid (System Identification Toolbox), discrete, Ts = 1 ms, Feedthrough = 1
 Data            : EV_BlackBox_log, 401 samples, 0.400 s
 Inputs          : RPM, MotorCurrent
@@ -30,9 +30,9 @@ CHECKS
   [PASS] Ibatt Error (1-Step)     RMSE = 2.11 A, MAE = 1.70 A, Bias = +1.50 A, +/-10% = 71.1% (threshold <= 5.00 A)
   [PASS] Vbatt Error (Free-Run)   RMSE = 0.0229 V, MAE = 0.0193 V, Bias = +0.0172 V, +/-10% = 100.0% (threshold <= 0.50 V)
   [PASS] Ibatt Error (Free-Run)   RMSE = 2.06 A, MAE = 1.74 A, Bias = -1.56 A, +/-10% = 66.9% (threshold <= 5.00 A)
-  [WARN] Raw Fit Vbatt_V          -50.2 % (Negative fit: steady-state validation variance collapse; physical RMSE is primary)
-  [WARN] Raw Fit Ibatt_A          -51.4 % (Negative fit: steady-state validation variance collapse; physical RMSE is primary)
-  [FAIL] Model Acceptance         NOT ACCEPTED: raw dynamic fit negative (V=-50.2%, I=-51.4%) due to steady-state validation variance collapse; physical error passes (V=0.0229 V, I=2.06 A)
+  [WARN] Raw Fit Vbatt_V          -50.2 % (negative free-run fit; below warning threshold 40%)
+  [WARN] Raw Fit Ibatt_A          -51.4 % (negative free-run fit; below warning threshold 40%)
+  [FAIL] Model Acceptance         NOT ACCEPTED: stable=1, free-run fit V=-50.24% and I=-51.40%, RMSE V=0.0229 V and I=2.064 A.
   [PASS] Saved model              C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\EV_BlackBox_SysID.mat
 
 The model works on NORMALISED data:  u_n = (u - U0)./Us ,  y = Ys.*y_n + Y0
