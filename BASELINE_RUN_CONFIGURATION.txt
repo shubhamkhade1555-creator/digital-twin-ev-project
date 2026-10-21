@@ -1,0 +1,131 @@
+======================================================================
+  EV DIGITAL TWIN — BASELINE RUN CONFIGURATION
+======================================================================
+Date Generated : 22-Oct-2026
+Auditor        : AI V&V Engineer (Antigravity)
+
+----------------------------------------------------------------------
+PRIMARY BASELINE RUN
+----------------------------------------------------------------------
+Run ID         : EV_RUN_20261021_161504
+Date/Time      : 21-Oct-2026 16:11:18 → 16:16:20  (wall clock 225.3 s)
+MATLAB Version : 24.2.0.3212159 (R2024b) Update 9
+Model File     : BLDCSpeedControl_EV_Layout_v2.slx  (MD5: C54C659370367BECC926A35CCD9A83EB)
+Parameter File : BLDCSpeedControlData.m              (MD5: 7AEC602DBC72CDA5D649A7F7110EA18A)
+DAQ Engine     : EV_DAQ_Builder_V7.m                 (MD5: B1D94E45020CC587F8743CF34F379645)
+SysID Engine   : EV_SysID_Auto.m                     (MD5: 2F702DF05FCDCC78B97B3BD91BFA8EAF)
+
+--- Simulation Parameters ---
+Stop Time (t_stop)            : 0.400 s
+Fundamental Sample Time (Ts)  : 1e-5 s (10 µs)
+Controller Loop Time (Tsc)    : 1e-4 s (100 µs / 10 kHz PWM)
+Speed Reference (rpm_ref)     : 2950 rpm
+Speed Ramp Rate (rpm_ramp)    : 13000 rpm/s
+Time to Reach Reference       : 0.227 s
+DC Link Voltage (Vdc)         : 48 V
+
+--- Motor Parameters (Nanotec APBA80L048030-EB) ---
+Rated Voltage (Vmotor_nom)    : 48 V
+Pole Pairs (p)                : 4
+Torque Constant (Kt)          : 0.107 N·m/A
+Back-EMF Table Amp (Ke_ph)    : 0.1486 V·s/rad  (Kt/κ, κ=0.72)
+Stator Phase Resistance (Rs)  : 0.10 Ω       ** ISSUE-11: Datasheet Rphase = 0.0215 Ω **
+Stator Self-Inductance (Ls)   : 80 µH
+Mutual Inductance (Ms)        : 10 µH
+Rotor Inertia (Jm)            : 0.002 kg·m²
+Continuous Current (I_cont)   : 30 A
+Peak Current (I_peak)         : 45 A
+
+--- Battery Pack Parameters (13S10P Samsung INR21700-50E equiv.) ---
+Cell Capacity (cell_Ah)       : 5 Ah
+Pack Capacity (pack_Ah)       : 50 Ah
+Series Cells                  : 13
+Parallel Cells                : 10
+Total Cell Count              : 130
+Nominal Pack Voltage           : 48.1 V  (13 × 3.70 V)
+Maximum Pack Voltage           : 54.6 V  (13 × 4.20 V)
+Minimum Pack Voltage           : 45.4 V  (13 × 3.49 V)
+Cell R0 (at 293K, 50% SOC)    : 8.2 mΩ  ** ISSUE-08: 27 Ah template, not 5 Ah cell **
+Pack R0                        : ~0.011 Ω  (13/10 × 0.0082)
+Cell OCV at SOC=1.0            : 4.19 V  (from lookup table)
+Thermal Mass per Cell          : 100 J/K
+Initial SOC                    : 1.000
+
+--- Current Limiter ---
+I_peak Ceiling                : 45 A
+t_peak                        : 1 s
+I²t Budget (Emax)             : 675 A²·s
+Limiter PI Gains (Kpi/Kii)    : 0.20 / 100
+Current Filter (T_Ifilt)      : 2 ms
+Min Voltage Ceiling (Vlim_min): 2 V
+
+--- Load Profile ---
+Load Torque (T_load_end)      : 3.18 N·m (1 kW at 3000 rpm)
+Load Profile                  : 0 N·m → 0.230 s, ramp → 3.18 N·m at 0.280 s, hold
+Load Scale                    : 1.0
+
+--- Drivetrain ---
+Gear Ratio                    : 11:1
+Wheel Radius                  : 0.25 m
+Wheel Mass                    : 1.5 kg
+Total Inertia (J_tot)          : 0.00239 kg·m² (Jm + J_wheel/gear²)
+
+--- Speed Controller ---
+Speed PI Gains (Kpw/Kiw)      : 0.05 / 10
+Voltage PI Gains (Kpv/Kiv)    : 0.3 / 1.5
+
+----------------------------------------------------------------------
+PRIMARY BASELINE RUN — KEY OUTPUT METRICS
+----------------------------------------------------------------------
+Total Simulated Time           : 0.400 s
+Raw Sample Count               : 40001 (10 µs steps)
+Cleaned Samples (1 ms)         : 401
+SysID Samples                  : 401 (280 est, 121 val)
+
+Final RPM                      : 2950.44 rpm
+Peak RPM                       : 2978.64 rpm
+Peak Motor Current             : 33.01 A
+RMS Motor Current (whole-run)  : 28.63 A
+Peak Battery Current           : 26.09 A
+Battery Voltage (steady)       : 54.21 V
+Final SOC                      : 1.0000
+Battery Power (steady)         : 1238.9 W
+Mechanical Power (steady)      : 978.0 W
+System Efficiency              : 78.9 %
+
+SysID Best Order               : nx = 2
+SysID Fit Vbatt_V              : -2158.9 %  (FAIL — variance collapse)
+SysID Fit Ibatt_A              : -2167.0 %  (FAIL — variance collapse)
+SysID Model Stable             : Yes (pole mag 0.989)
+
+V&V Final Status               : FAIL  (2 SysID fit checks failed)
+
+----------------------------------------------------------------------
+SHORT-RUN COMPARISON BASELINE
+----------------------------------------------------------------------
+Run ID                         : EV_RUN_20261021_172910
+Stop Time                      : 0.200 s
+Cleaned Samples (1 ms)         : 201
+Final RPM                      : 2583 (truncated before target)
+SysID                          : Not performed (no SysID MAT file in this run)
+V&V Status                     : FAIL (speed target unreachable in 0.2 s)
+
+----------------------------------------------------------------------
+REFERENCE MASTER (0.5 s run)
+----------------------------------------------------------------------
+Reference File                 : EV_DAQ_Clean_4_05_Reference_Master.xlsx
+Location                       : docs/Reference_Research_Papers/
+Samples                        : 501 (1 ms)
+Steady-State Window            : 0.30 – 0.50 s
+Steady RPM                     : 2950.22 rpm
+Steady Motor Current           : 32.86 A
+Steady Torque (gross)          : 3.54 N·m
+Kt (sim)                       : 0.1077 N·m/A
+Battery Power (steady)         : 1391.8 W
+Mechanical Power               : 982.4 W
+System Efficiency              : 70.58 %
+Vehicle Speed                  : 25.28 km/h
+
+======================================================================
+  END OF BASELINE RUN CONFIGURATION
+======================================================================

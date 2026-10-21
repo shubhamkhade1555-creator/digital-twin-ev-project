@@ -218,9 +218,16 @@ MDLFCN = mfilename;
 if nargin >= 1 && (ischar(varargin{1}) || isstring(varargin{1}))
     switch lower(char(varargin{1}))
         case 'postprocess', evPostProcess(MDL);  return
-        case 'autoinit',    evAutoInit(MDL);  evSessionStart(MDL);  return
+        case 'autoinit'
+            tA = tic;  evAutoInit(MDL);  tA1 = toc(tA);  evSessionStart(MDL);
+            fprintf('[TIME] StartFcn hook: AutoInit %.2f s + session/live monitor %.2f s. The solver starts now.\n', tA1, toc(tA) - tA1);
+            return
         case 'cleantap',    evCleanTap(MDL);  return
-        case 'overrides',   evApplyOverrides(true);  evEnsureLoadProfile(MDL, true);  return   % InitFcn hook
+        case 'overrides'
+            try, assignin('base','EV_T_init', tic); catch, end
+            tH = tic;  evApplyOverrides(true);  evEnsureLoadProfile(MDL, true);
+            fprintf('[TIME] InitFcn hook (parameters + load-profile file check): %.2f s  (everything else before StartFcn is Simulink compile)\n', toc(tH));
+            return   % InitFcn hook
         case 'loadstop',    evApplySavedStopTime(MDL);  return                                  % V7.8 PostLoadFcn hook: last used Stop Time
         % ---- V7.5 BLACK-BOX ---------------------------------------------------
         case 'blackbox'
@@ -502,6 +509,12 @@ function evAutoInit(MDL)
 % missing; the signal map built by setup is reused (no find_system over the whole battery model per run).
 persistent pathDone
 evTimes('reset');
+try   % TIMING: InitFcn -> StartFcn = compile / model update time of this run
+    tc = toc(evalin('base','EV_T_init'));
+    fprintf('[TIME] Compile (InitFcn -> StartFcn): %.1f s | Stop Time box = %s s\n', tc, strtrim(get_param(MDL,'StopTime')));
+    assignin('base','EV_T_start', tic);
+catch
+end
 cfg = evCfg();
 root = evFindRoot(MDL);
 addpath(root);
@@ -721,6 +734,9 @@ fprintf('  Controller     : speed PI %.4f/%.2f  voltage PI %.3f/%.2f\n', bv('Kpw
 stopT = evStopTime(MDL);
 per   = bv('EV_DAQ_LivePeriod', 0.1);
 fprintf('  Simulation time: %.3f s\n', stopT);
+estMin = stopT*566/60;   % measured (BLDCSpeedControlData.m): 0.5 s took 283 s at Ts = 1e-5; solver time is proportional to Stop Time
+fprintf('  Expected solver time: about %.1f min at Ts = %g s (Stop Time 0.3 s = about 2.8 min, 0.5 s = about 4.7 min)\n', estMin, safeBase('Ts',1e-5));
+if estMin > 3, fprintf('  NOTE: a Stop Time above 0.3 s costs wall time. Use 0.3 s for normal runs, or EV_DAQ_Fast = true to skip the report files.\n'); end
 fprintf('  Target speed   : %.0f rpm\n', bv('rpm_ref',NaN));
 fprintf('  LIVE period    : %.3f s (simulation time)\n', per);
 fprintf('----------------------------------------------------\n');
@@ -1081,6 +1097,13 @@ try
             pL = get_param(lpPath,'PortHandles');
             evAddLine(bbPath, cur, pL.Inport(1), ['low-pass ' plan(k).label]);
             cur = pL.Outport(1);
+        end
+        if strcmp(plan(k).label,'Ibatt_A')                   % POSITIVE-CURRENT: magnitude after the low-pass
+            abPath = sprintf('%s/BB_Abs_%02d', bbPath, k);
+            add_block('built-in/Abs', abPath, 'ShowName','off', 'Position', [xr+70 yPos xr+110 yPos+20]);
+            pA = get_param(abPath,'PortHandles');
+            evAddLine(bbPath, cur, pA.Inport(1), ['abs ' plan(k).label]);
+            cur = pA.Outport(1);
         end
         dtcOut(k) = cur;
     end
@@ -1462,7 +1485,11 @@ end
 
 function [ok, msg] = evLiveRegister(MDL)
 ok = false;
-zohs = evFind(MDL,'LookUnderMasks','all','FollowLinks','on','Name','EV_LIVE_ZOH');   % V7.1: tap may live in a subsystem
+zohs = {};
+for cand = {[MDL '/EV_LIVE_Tap/EV_LIVE_ZOH'], [MDL '/EV_LIVE_ZOH']}          % FAST PATH: known locations, no find_system
+    if getSimulinkBlockHandle(cand{1}) > 0, zohs = {cand{1}}; break, end
+end
+if isempty(zohs), zohs = evFind(MDL,'LookUnderMasks','all','FollowLinks','on','Name','EV_LIVE_ZOH'); end   % V7.1: tap may live in a subsystem (slow search only as fallback)
 zoh = '';  tapSys = '';
 if ~isempty(zohs), zoh = zohs{1};  tapSys = get_param(zoh,'Parent'); end
 try
@@ -1504,6 +1531,7 @@ for k = 1:numel(S.taps)
         d = double(rto.OutputPort(1).Data);
         y = normSignal(d(:)', key, P);          % same scaling as the archived data
         v.(key) = y(1);
+        if strcmp(key,'ibatt'), v.ibatt = abs(v.ibatt); end   % POSITIVE-CURRENT
     catch
     end
 end
@@ -1536,6 +1564,7 @@ end
 %%  ✓ Fast completion reporting (~50% faster than original)
 %% ========================================================================
 function evPostProcess(MDL)
+try, fprintf('[TIME] Solver run (StartFcn -> StopFcn): %.1f s\n', toc(evalin('base','EV_T_start'))); catch, end
 tG = tic;
 try
     evPostCore(MDL, tG);
@@ -1658,6 +1687,8 @@ end
 TV = evTimeVectorAudit(S);
 LG('2/14 Raw data (as logged, unmodified)');
 [RawFull, ri] = buildRaw(S, sigMap);             % full-width table (pack + per-cell columns)
+% POSITIVE-CURRENT: every battery current column is stored as a magnitude (no negative values anywhere downstream)
+if ~isempty(ri.Cols.ibatt), RawFull{:, ri.Cols.ibatt} = abs(RawFull{:, ri.Cols.ibatt}); end
 clear S                                          % logged copies are no longer needed
 [Raw, nDupT] = compactRaw(RawFull, ri, P);       % pack-level view
 tw = tic;
@@ -1884,6 +1915,24 @@ try
 catch ME_bb
     LG(sprintf('14b/14 Black-Box SysID skipped: %s', ME_bb.message));
     fprintf('[DAQ]    Black-Box SysID skipped (non-fatal): %s\n', ME_bb.message);
+end
+
+%% ---- 14c  numbered clean data + comparison graphs + reference Excel, inside THIS run folder ----
+% EV_MakeReference does it, so Run in Simulink (typed Stop Time) and RunAll give the same files:
+%   EV_RUN_<time>\EV_DAQ_Clean_<run no>_<seconds x 10>.mat/.csv , Figures\Battery , Figures\Motor , MASTER files + Excel
+if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))      % EV_Ref_Skip = true skips the reference graphs + Excel only
+    try
+        fprintf('[DAQ] 14c. Clean data + comparison graphs + reference Excel ...\n');
+        if exist('EV_MakeReference', 'file') == 2
+            EV_MakeReference(Clean, [], [], runDir);
+            LG('14c/14 Numbered clean data, comparison graphs and reference Excel complete');
+        else
+            LG('14c/14 skipped: EV_MakeReference.m is not in the project folder');
+        end
+    catch ME_pr
+        LG(sprintf('14c/14 Comparison graphs skipped: %s', ME_pr.message));
+        fprintf('[DAQ]    Comparison graphs skipped (non-fatal): %s\n', ME_pr.message);
+    end
 end
 
 dtxt = '';
@@ -2149,6 +2198,7 @@ for k = 1:numel(keys)
     nm = evKeySpecName(key);
     if any(strcmp(key,{'vbatt','ibatt','soc'}))
         y = normSignal(Y, key, P);
+        if strcmp(key,'ibatt'), y = abs(y); end      % POSITIVE-CURRENT
         R.(nm) = y;
         if strcmp(key,'soc')
             sc = 1;  if max(Y(:)) > 1.5, sc = 0.01; end
@@ -2224,6 +2274,7 @@ for k = 1:numel(keys)
         V.(key) = nan(size(tg));
     end
 end
+if isfield(V,'ibatt'), V.ibatt = abs(V.ibatt); end   % POSITIVE-CURRENT
 if ~isfield(V,'rpm_ref') && isfield(V,'rpm')
     V.rpm_ref = min(P.rpm_ramp*tg, P.rpm_ref);  ci.RefDerived = true;
     ci.Notes{end+1} = 'RPMReference DERIVED = min(rpm_ramp*t, rpm_ref) because the model does not log the reference';
@@ -2267,6 +2318,9 @@ switch key
         elseif nc == P.cells_series*P.cells_parallel
             y = sum(Y,2)/P.cells_series;
             note = 'BatteryCurrent: terminal current = sum of all 130 cell currents / cells_series (every series level carries the full pack current)';
+        elseif nc == P.cells_series
+            y = mean(Y,2,'omitnan');       % LUMPED pack (one model per series group): every group carries the full pack current
+            note = 'BatteryCurrent: lumped pack, mean of the series-group currents (each carries the pack current)';
         else
             y = mean(Y,2,'omitnan')*P.cells_parallel;
             note = sprintf('BatteryCurrent: %d columns, mean cell current x%d (cells_parallel)', nc, P.cells_parallel);
@@ -3430,6 +3484,7 @@ tg0 = (0:1e-3:tEnd)';
 
 [V, V0] = evCellGrid(R, ri.Cols.vbatt,       iu, tu, tg0);
 [I, I0] = evCellGrid(R, ri.Cols.ibatt,       iu, tu, tg0);
+I = abs(I);  I0 = abs(I0);                              % POSITIVE-CURRENT
 [S, S0] = evCellGrid(R, ri.Cols.soc,         iu, tu, tg0);
 [T, T0] = evCellGrid(R, ri.Cols.temperature, iu, tu, tg0);
 

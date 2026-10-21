@@ -22,6 +22,15 @@ function result = RunAll(varargin)
 %     - The full data archive is written by EV_DAQ_Builder_V7 to EV_RUN_<time>/ (its own command log is inside)
 %     - Returns a struct: result.pass / warn / fail counts, result.checks table, result.runDir, result.logFile
 %
+%   STEP 10: numbered clean data + comparison graphs (our system vs Electrica 2022 reference). Done by EV_MakeReference, which the
+%     Simulink StopFcn also starts, so a manual Run in Simulink (Stop Time typed in the toolbar) saves exactly the same.
+%     Every run keeps its files in its own run folder:
+%       Simulation Logs\EV_RUN_<date_time>\EV_DAQ_Clean_<run no>_<seconds x 10>.mat / .csv   (0.1 s -> _1_01, 4th run 0.5 s -> _4_05)
+%       Simulation Logs\EV_RUN_<date_time>\Figures\Battery\   Battery_1..4
+%       Simulation Logs\EV_RUN_<date_time>\Figures\Motor\     Motor_1..5
+%       Simulation Logs\EV_RUN_<date_time>\Figures\           Battery_MASTER, Motor_MASTER, Combined_MASTER + Reference_Master.xlsx
+%     Reference mode: EV_Ref_Mode = 'calculated' (default) | 'live' | 'original' (type in Command Window).
+%
 %   RunAll does NOT change any physics or parameter. It only calls the existing project files.
 
 p = inputParser;
@@ -153,7 +162,7 @@ if ~isempty(userStop)
     say('[RunAll]    model Stop Time set to %g s after the reload.', userStop);
 end
 % clear results of an earlier run so they cannot be mistaken for this run
-evalin('base', 'clear EV_BlackBox_log EV_DAQ_Clean EV_DAQ_Raw EV_DAQ_RunDir');
+evalin('base', 'clear EV_BlackBox_log EV_DAQ_Clean EV_DAQ_Raw EV_DAQ_RunDir EV_MakeRef_Name EV_MakeRef_Busy');
 
 %% ---- 6. model fix + DAQ setup (builds + saves EV_BlackBox, does not start) ------------------------
 try
@@ -252,7 +261,8 @@ if ~iscell(lab) || numel(lab) ~= size(bb.Data, 2)
 end
 V   = @(n) racol(bb, lab, n);
 tb  = bb.Time(:);
-Vb = V('Vbatt_V'); Ib = V('Ibatt_A'); SOC = V('SOC'); RPM = V('RPM_rpm');
+Vb = V('Vbatt_V'); Ib = abs(V('Ibatt_A'));   % POSITIVE-CURRENT
+ SOC = V('SOC'); RPM = V('RPM_rpm');
 Im = V('Idc_f_A'); Vd = V('Vdc_m_V'); Tq = V('Torque_Nm'); Ww = V('omega_wheel');
 if any(cellfun(@isempty, {Vb, Ib, SOC, RPM, Im, Vd, Tq, Ww}))
     R = rarec(R, say, 'FAIL', 'Black Box channels', 'a channel is missing from EV_BlackBox_log');
@@ -316,6 +326,38 @@ if all(ismember({'MotorCurrent', 'BatteryVoltage', 'BatteryCurrent', 'RPM'}, vn)
 else
     R = rarec(R, say, 'WARN', 'BlackBox vs archive', 'archive table has other column names - comparison skipped');
 end
+%% ---- 9b + 10. numbered clean data, comparison graphs, reference Excel (EV_MakeReference) ---------------------
+% EV_MakeReference runs inside the Simulink StopFcn chain (EV_DAQ_Builder_V7 step 14c), so a plain Run in Simulink saves
+% the same files. RunAll waits for it and only calls it itself if the hook did not run.
+say('[RunAll] 10. Clean data + comparison graphs (EV_MakeReference, inside the run folder) ...');
+if logical(rav('EV_DAQ_Fast', false)) || logical(rav('EV_Ref_Skip', false))
+    say('[RunAll]    Fast mode / EV_Ref_Skip: clean-data copy, graphs and reference Excel skipped.');
+else
+    try
+        if isempty(result.runDir) || ~isfolder(result.runDir)
+            error('RunAll:noRunDir', 'run folder not found - graphs skipped');
+        end
+        tp = tic;
+        while toc(tp) < 180
+            if rahas('EV_MakeRef_Name'), break, end
+            busy = rahas('EV_MakeRef_Busy') && logical(rav('EV_MakeRef_Busy', false));
+            if ~busy && toc(tp) > 15, break, end
+            pause(1);
+        end
+        if rahas('EV_MakeRef_Name')
+            fname = evalin('base', 'EV_MakeRef_Name');
+        else
+            say('[RunAll]    Simulink hook did not run (old EV_DAQ_Builder_V7.m?) - calling EV_MakeReference here.');
+            EV_MakeReference(C, [], [], result.runDir);
+            fname = evalin('base', 'EV_MakeRef_Name');
+        end
+        [~, rn] = fileparts(result.runDir);
+        R = rarec(R, say, 'PASS', 'Clean data + graphs', [fullfile('Simulation Logs', rn, 'Figures') '  (' fname ')']);
+    catch ME
+        R = rarec(R, say, 'WARN', 'Clean data + graphs', ME.message);
+    end
+end
+
 result = rafinish(result, R, say, root, stamp, toc(tAll));
 end
 

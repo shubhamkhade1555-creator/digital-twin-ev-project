@@ -1,0 +1,10 @@
+Check,Result,Detail
+Data source,PASS,"EV_DAQ_Clean (1 ms window means, PWM ripple averaged)"
+Samples,PASS,"392 samples, 0.391 s"
+Excitation,PASS,"RPM range 2979 rpm, current range 33.0 A"
+Estimation,PASS,"n4sid, best order nx = 1 (of 1..6)"
+Model stable,FAIL,"largest pole magnitude 1.7266 (>= 1): change inputs/outputs or order"
+Model scaling,PASS,"largest B/C entry 1.38 (normalised data)"
+Fit Vbatt_V,FAIL,"-12761397940063.4 %  (PASS >= 70, WARN >= 40)"
+Fit Ibatt_A,FAIL,"-12760573940796.8 %  (PASS >= 70, WARN >= 40)"
+Saved model,PASS,"C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261021_171122\EV_BlackBox_SysID.mat"

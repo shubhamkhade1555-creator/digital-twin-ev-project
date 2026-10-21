@@ -1,0 +1,34 @@
+=== EV Digital Twin - Black-Box System Identification Report ===
+Date       : 21-Oct-2026 16:15:48
+Tool       : n4sid (System Identification Toolbox), discrete, Ts = 1 ms
+Data       : EV_BlackBox_log, 401 samples, 0.400 s
+Inputs     : RPM, MotorCurrent
+Outputs    : Vbatt_V, Ibatt_A
+Split      : estimation 280 samples, validation 121 samples
+Best order : nx = 2
+
+RESULT     : NOT DONE PROPERLY (FAIL)   (PASS 7  WARN 0  FAIL 2)
+
+CHECKS
+  [PASS] Data source            EV_DAQ_Clean (1 ms window means, PWM ripple averaged)
+  [PASS] Samples                401 samples, 0.400 s
+  [PASS] Excitation             RPM range 2979 rpm, current range 33.0 A
+  [PASS] Estimation             n4sid, best order nx = 2 (of 1..6)
+  [PASS] Model stable           largest pole magnitude 0.9890 (< 1)
+  [PASS] Model scaling          largest B/C entry 6.89 (normalised data)
+  [FAIL] Fit Vbatt_V            -2158.9 %  (PASS >= 70, WARN >= 40)
+  [FAIL] Fit Ibatt_A            -2167.0 %  (PASS >= 70, WARN >= 40)
+  [PASS] Saved model            C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261021_161504\EV_BlackBox_SysID.mat
+
+The model works on NORMALISED data:  u_n = (u - U0)./Us ,  y = Ys.*y_n + Y0
+U0 = [2100.28 27.8518]
+Us = [983.885 6.6431]
+Y0 = [54.2906 16.0265]
+Ys = [0.0770186 6.87645]
+
+A = [0.8322 -0.1924;-0.4729 0.409]
+B = [-0.7242 0.9108;2.739 -6.886]
+C = [1.278 0.3417;-1.282 -0.3383]
+D = [0 0;0 0]
+
+To open the System Identification app with this run:  systemIdentification  then import EV_Ze / EV_Zv from the workspace.

@@ -1,0 +1,44 @@
+
+==============================================================
+  EV DIGITAL TWIN - RunAll   21-Oct-2026 15:42:07
+==============================================================
+[RunAll] 1. Project folder (auto-detected): C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+[RunAll]    MATLAB path set (project + sub-folders, run archives excluded).
+[RunAll]    Log file: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\RunAll_20261021_154207.txt
+[RunAll] 2. Checking files ...
+[RunAll]    FOUND              BLDCSpeedControl_EV_Layout_v2.slx
+[RunAll]    FOUND              BLDCSpeedControlData.m
+[RunAll]    FOUND              BLDCSpeedControlInput.mat
+[RunAll]    FOUND              Batteries2_lib.slx
+[RunAll]    FOUND              EV_DAQ_Builder_V7.m
+[RunAll]    FOUND              Batteries2.slx
+[RunAll]    [PASS] Required files                         all found
+[RunAll] 3. Checking MATLAB ...
+[RunAll]    MATLAB 2024b on PCWIN64
+[RunAll]    [WARN] MATLAB release                         2024b (project was built in R2024b - the model may not open in an older release)
+[RunAll]    product ok      : Simulink
+[RunAll]    product ok      : Simscape
+[RunAll]    product ok      : Simscape Electrical
+[RunAll]    product ok      : Simscape Battery
+[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...
+[RunAll]    Stop Time taken from the Simulink toolbar: 0.1 s (parameter file default 0.1 s is ignored)
+[RunAll]    rpm_ref=2950 rpm  I_cont=30 A  I_peak=45 A  Kt=0.107 N*m/A  t_stop=0.1 s  pack=50 Ah
+[RunAll]    Ts = 1e-05 s (project setting: 1e-5 s = 2x faster, verified 15 PASS / 4 WARN / 0 FAIL)
+[RunAll] 5. Loading models ...
+[RunAll]    closed the old copy of BLDCSpeedControl_EV_Layout_v2 (reload from disk).
+[RunAll]    model Stop Time set to 0.1 s after the reload.
+[RunAll] 6a. Model fix: buck snubber -> exclude ...
+[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...
+[RunAll]    [PASS] DAQ setup                              model loaded, Black Box built, hooks written, model saved
+[RunAll]    Stop Time of the model for this run: 0.1 s
+[RunAll] 7. Separate compile check skipped (the simulation start compiles the model once; use RunAll('Compile',true) to force it).
+[RunAll] 8. Starting simulation (t_stop = 0.1 s). [LIVE] lines follow ...
+--------------------------------------------------------------
+[RunAll]    ... running, simulation time 0.000 / 0.1 s, wall time 9 s
+[RunAll]    ... running, simulation time 0.006 / 0.1 s, wall time 15 s
+[RunAll]    ... running, simulation time 0.013 / 0.1 s, wall time 20 s
+[RunAll]    ... running, simulation time 0.022 / 0.1 s, wall time 25 s
+[RunAll]    ... running, simulation time 0.039 / 0.1 s, wall time 30 s
+[RunAll]    ... running, simulation time 0.053 / 0.1 s, wall time 35 s
+[RunAll]    ... running, simulation time 0.072 / 0.1 s, wall time 40 s
+[RunAll]    ... running, simulation time 0.090 / 0.1 s, wall time 45 s

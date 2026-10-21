@@ -1,0 +1,23 @@
+File,Path,Size_bytes,Last_Modified,MD5_Hash,Category,Audit_Status
+RunAll.m,Root,22622,2026-10-21 16:01:36,0C83D76729643A85FD681C989C455D65,Script - Entry Point,Audited
+BLDCSpeedControlData.m,Root,9040,2026-10-19 15:08:11,7AEC602DBC72CDA5D649A7F7110EA18A,Script - Parameters,Audited
+BLDCSpeedControl_EV_Layout_v2.slx,Root,153756,2026-10-21 18:42:44,C54C659370367BECC926A35CCD9A83EB,Simulink Model - Plant,Audited
+BLDCSpeedControlInput.mat,Root,2045,2026-10-19 15:08:11,27008756F42AD7D29E61C18AFD26D97B,MAT - Load Profile,Verified
+Batteries2.slx,Root,270676,2026-10-19 15:08:11,7C85AEB22628F08242CDD84094A9562F,Simulink - Battery Pack,Audited
+Batteries2_lib.slx,Root,39192,2026-10-19 15:08:11,A169D82873B79D51ED85B31DF0FE5888,Simulink Library - Battery,Audited
+EV_DAQ_Builder_V7.m,Root,237947,2026-10-21 17:06:35,B1D94E45020CC587F8743CF34F379645,Script - DAQ & V&V Engine,Audited
+EV_SysID_Auto.m,Root,12486,2026-10-21 16:01:21,2F702DF05FCDCC78B97B3BD91BFA8EAF,Script - System Identification,Audited
+EV_BatteryCheck.m,Root,7243,2026-10-21 17:00:32,37AA12C64DE21AA1A720ADD39D8550FB,Script - Battery Check,Audited
+EV_Twin_App.m,Root,27923,2026-10-19 17:06:09,0B75F9992FFEE107CCA98391C417988E,Script - Twin App UI,Not Audited
+EV_BlackBox_SysID.mat,Root,18710,2026-10-19 15:08:11,8EF5E976DF2D4D87B18C9B22335087DB,MAT - Legacy SysID Model,Defective (ISSUE-06)
+EV_CrossVerification_Results.xlsx,Root,30697,2026-10-21 18:23:08,36D62C2DC8C10A311FD15B626A865586,Excel - Cross Verification,Audited
+EV_Digital_Twin_COMPLETE_ROOT_CAUSE_AUDIT.md,Root,23060,2026-10-21 23:54:07,N/A,Markdown - Audit Report,Active Document
+EV_Digital_Twin_ROOT_CAUSE_REGISTER.xlsx,Root,9718,2026-10-21 23:54:07,3A3E8417CA5D3C706D324A5209BE2719,Excel - Issue Register,Active Document
+EV_LastStopTime.txt,Root,4,2026-10-21 17:26:07,5215168F88B83CB127D078DCF751B4B6,Text - Last Stop Time,Verified (0.2)
+ModuleType1.ssc,+Batteries2/+Modules,9458,2026-10-02 13:04:16,C76AEF5127363E6755FF4CCB64F0BC27,SSC - Battery Module,Audited
+ParallelAssemblyType1.ssc,+Batteries2/+ParallelAssemblies,9181,2026-10-02 13:05:50,235800AF4A3F65187CF1551FCD1AE9CF,SSC - Parallel Assembly,Audited
+APBA80L048030-E_Datasheet.pdf,Datasheets_and_Simulation_Verification,223970,N/A,N/A,PDF - Motor Datasheet,Reference
+APBA80L048030-E_Manual_Description.pdf,Datasheets_and_Simulation_Verification,151937,N/A,N/A,PDF - Motor Manual,Reference
+Samsung_INR21700-50E_Cell_Datasheet.pdf,Datasheets_and_Simulation_Verification,856186,N/A,N/A,PDF - Cell Datasheet,Reference
+Datasheet_vs_Simulation_Values.xlsx,Datasheets_and_Simulation_Verification,7326,2026-10-21 20:09:24,9FFA173892F5F45282747B1103427B66,Excel - Datasheet vs Sim,Audited
+EV_DAQ_Clean_4_05_Reference_Master.xlsx,docs/Reference_Research_Papers,102370,2026-10-21 14:47:00,94EC11107BF666C5A6DF98AC84AA735B,Excel - Reference Master (0.5s),Reference Baseline

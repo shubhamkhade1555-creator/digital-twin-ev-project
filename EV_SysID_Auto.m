@@ -11,7 +11,7 @@ function R = EV_SysID_Auto(runDir, P) %#ok<INUSD>
 %     3. splits 80 % estimation / 20 % validation, estimates n4sid models of order 1..6
 %     4. picks the order with the best VALIDATION FIT (stable models preferred)
 %     5. runs checks (PASS / WARN / FAIL) and prints them in the Command Window
-%     6. opens 4 figures (pop-up) and saves them as PNG in <run folder>\Figures
+%     6. no figures here (comparison graphs are made by RunAll step 10)
 %     7. saves model, data and report in the run folder:
 %          EV_BlackBox_SysID.mat   EV_BlackBox_SysID_Report.txt   EV_SysID_Checks.csv
 %     8. puts sys_blackbox, EV_BB_A..D, EV_Ze, EV_Zv, EV_SysID_Result in the base workspace
@@ -45,7 +45,7 @@ try
     C = evalin('base', 'EV_DAQ_Clean');
     need = {'RPM','MotorCurrent','BatteryVoltage','BatteryCurrent'};
     if all(ismember(need, C.Properties.VariableNames))
-        M  = [C.RPM C.MotorCurrent C.BatteryVoltage C.BatteryCurrent];
+        M  = [C.RPM C.MotorCurrent C.BatteryVoltage abs(C.BatteryCurrent)];   % POSITIVE-CURRENT
         ok = all(isfinite(M), 2);
         t  = C.Time(ok);  M = M(ok,:);
         U  = M(:,1:2);    Y = M(:,3:4);
@@ -145,84 +145,7 @@ for k = 1:numel(bestFit)
     chk = addRow(chk, ['Fit ' labels_y{k}], lvl{k}, sprintf('%.1f %%  (PASS >= %g, WARN >= %g)', f, cfg.fitPass, cfg.fitWarn));
 end
 
-%% ---- 6. physical-unit prediction for the plots -----------------------------------------------
-[ypd, ~] = compare(Zv, best);
-Ypred = ypd.OutputData .* Ys + Y0;
-Ymeas = Zv.OutputData  .* Ys + Y0;
-
-%% ---- 7. figures: pop-up + save --------------------------------------------------------------
-figNote = 'figures not created';
-try
-    if cfg.show, vis = 'on'; else, vis = 'off'; end
-    delete(findall(0, 'Type', 'figure', 'Tag', 'EV_SysID'));       % close the figures of the previous run
-    figDir = fullfile(runDir, 'Figures');
-    if ~isfolder(figDir), mkdir(figDir); end
-    nu = numel(labels_u);  ny = numel(labels_y);
-    mk = @(nm, pos) figure('Name', nm, 'Tag', 'EV_SysID', 'Color', 'w', 'Visible', vis, 'Position', pos);
-
-    f1 = mk('SysID 1 - data', [40 60 900 680]);
-    for k = 1:nu
-        subplot(nu+ny, 1, k);  plot(t, U(:,k), 'LineWidth', 1.2);  xline(t(Nest), '--');
-        ylabel(labels_u{k}, 'Interpreter', 'none');  grid on;
-        if k == 1, title('Identification data: inputs (top), outputs (bottom). Dashed line: estimation | validation'); end
-    end
-    for k = 1:ny
-        subplot(nu+ny, 1, nu+k);  plot(t, Y(:,k), 'LineWidth', 1.2);  xline(t(Nest), '--');
-        ylabel(labels_y{k}, 'Interpreter', 'none');  grid on;
-    end
-    xlabel('Time [s]');
-
-    f2 = mk('SysID 2 - validation (measured vs model)', [80 70 900 640]);
-    for k = 1:ny
-        subplot(ny, 1, k);
-        plot(tv, Ymeas(:,k), 'k', 'LineWidth', 1.5);  hold on;
-        plot(tv, Ypred(:,k), 'r--', 'LineWidth', 1.5);
-        title(sprintf('%s:  fit %.1f %%  [%s]', labels_y{k}, bestFit(k), lvl{k}), 'Interpreter', 'none');
-        ylabel(labels_y{k}, 'Interpreter', 'none');  grid on;
-        if k == 1, legend('measured', 'model', 'Location', 'best'); end
-    end
-    xlabel('Time [s] (validation part of the run)');
-
-    f3 = mk('SysID 3 - poles', [120 80 520 520]);
-    th = linspace(0, 2*pi, 200);
-    plot(cos(th), sin(th), 'k--');  hold on;
-    plot(real(pl), imag(pl), 'rx', 'MarkerSize', 10, 'LineWidth', 2);
-    axis equal;  grid on;  xlabel('Real');  ylabel('Imaginary');
-    title(sprintf('Poles of the model (nx = %d). Stable if inside the circle', bestN));
-
-    f4 = mk('SysID 4 - order sweep', [160 90 600 420]);
-    bar(sweep(:,1), sweep(:,2));  grid on;
-    xlabel('State order nx');  ylabel('Mean validation fit [%]');
-    title(sprintf('Order sweep (chosen: nx = %d)', bestN));
-
-    % full-run comparison: measured vs model over the whole run (estimation + validation)
-    Zall = iddata(Yn, Un, Ts, 'InputName', labels_u, 'OutputName', labels_y);
-    [yAll, ~] = compare(Zall, best);
-    YpredAll = yAll.OutputData .* Ys + Y0;
-    f5 = mk('SysID 5 - whole run (measured vs model)', [60 40 1000 760]);
-    for k = 1:ny
-        subplot(ny, 1, k);
-        plot(t, Y(:,k), 'k', 'LineWidth', 1.4);  hold on;
-        plot(t, YpredAll(:,k), 'r--', 'LineWidth', 1.4);
-        xline(t(Nest), ':', 'validation starts');
-        title(sprintf('%s: whole run, validation fit %.1f %%', labels_y{k}, bestFit(k)), 'Interpreter', 'none');
-        ylabel(labels_y{k}, 'Interpreter', 'none');  grid on;
-        if k == 1, legend('measured', 'model', 'Location', 'best'); end
-    end
-    xlabel('Time [s]');
-
-    figs  = [f1 f2 f3 f4 f5];
-    names = {'SysID_1_Data.png', 'SysID_2_Validation.png', 'SysID_3_Poles.png', ...
-             'SysID_4_OrderSweep.png', 'SysID_5_WholeRun.png'};
-    for k = 1:numel(figs)
-        saveFigure(figs(k), fullfile(figDir, names{k}));
-    end
-    drawnow;
-    figNote = sprintf('%d figures saved in %s', numel(figs), figDir);
-    chk = addRow(chk, 'Figures', 'PASS', figNote);
-catch ME
-    chk = addRow(chk, 'Figures', 'WARN', ['could not create/save figures: ' ME.message]);
-end
+%% ---- 6. (comparison graphs are made by RunAll step 10, not here)
 
 %% ---- 8. save + workspace ---------------------------------------------------------------------
 sys_blackbox = best;  A = best.A;  B = best.B;  C = best.C;  D = best.D;  fit = bestFit; %#ok<NASGU>

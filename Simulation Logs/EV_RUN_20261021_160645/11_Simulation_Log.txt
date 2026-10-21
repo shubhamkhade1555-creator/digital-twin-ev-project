@@ -1,0 +1,53 @@
+[2026-10-21 16:05:11.843] Simulation started
+[2026-10-21 16:05:11.847] Model loaded: BLDCSpeedControl_EV_Layout_v2
+[2026-10-21 16:05:11.849] Parameters loaded: BLDCSpeedControlData.m, BLDCSpeedControlInput.mat
+[2026-10-21 16:05:11.852] Workspace initialized: EV_DAQ_Root = C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+[2026-10-21 16:05:11.861] Data logging initialized: 8 To Workspace signals (log_rpm, log_Tq_meas, log_Idc_f, log_vcell, log_icell, log_soc, log_Vdc_m, log_omega_wheel)
+[2026-10-21 16:05:11.887] Live monitor active: simulation-synchronised, every 0.100 s, 8 tapped signals - lines start with [LIVE]
+[2026-10-21 16:05:53.230] [LIVE] t= 0.100 s ( 50.0%) | RPM=  1283 | Idc= 29.93 A | Ibat_inst= 24.90 A | Tq_inst= 3.334 Nm | Vbat= 54.19 V | SOC= 1.0000 | Vdc= 21.46 V | Pb_inst= 1349.2 W | Pm_inst=  448.0 W  [instantaneous, PWM-aliased]
+[2026-10-21 16:06:45.280] [LIVE] t= 0.200 s (100.0%) | RPM=  2583 | Idc= 31.80 A | Ibat_inst= 21.33 A | Tq_inst= 4.119 Nm | Vbat= 54.23 V | SOC= 1.0000 | Vdc= 38.72 V | Pb_inst= 1156.6 W | Pm_inst= 1114.2 W  [instantaneous, PWM-aliased]
+[2026-10-21 16:06:45.983] Simulation output root : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs
+[2026-10-21 16:06:45.984] Current run folder     : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261021_160645
+[2026-10-21 16:06:45.985] Figures folder         : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261021_160645\Figures
+[2026-10-21 16:06:45.987] Raw archive folder     : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261021_160645\Raw_Archive
+[2026-10-21 16:06:45.989] Simulation completed - post-processing started
+[2026-10-21 16:06:45.990] Run ID: EV_RUN_20261021_160645
+[2026-10-21 16:06:45.991] Simulation wall time (StartFcn -> StopFcn, includes Simscape initialisation): 94.00 s
+[2026-10-21 16:06:45.998] 1/14 Harvesting logged signals
+[2026-10-21 16:06:46.078]      simulated time = 0.2000 s
+[2026-10-21 16:06:46.082]      layout RPM                log_rpm          Data [20001 1], IsTimeFirst=1 -> 20001 samples x 1 columns
+[2026-10-21 16:06:46.083]      layout MotorTorque        log_Tq_meas      Data [20001 1], IsTimeFirst=1 -> 20001 samples x 1 columns
+[2026-10-21 16:06:46.085]      layout MotorCurrent       log_Idc_f        Data [2001 1], IsTimeFirst=1 -> 2001 samples x 1 columns
+[2026-10-21 16:06:46.086]      layout BatteryVoltage     log_vcell        Data [13 1 20001], IsTimeFirst=0 -> 20001 samples x 13 columns
+[2026-10-21 16:06:46.091]      layout BatteryCurrent     log_icell        Data [130 1 20001], IsTimeFirst=0 -> 20001 samples x 130 columns
+[2026-10-21 16:06:46.093]      layout SOC                log_soc          Data [130 1 20001], IsTimeFirst=0 -> 20001 samples x 130 columns
+[2026-10-21 16:06:46.094]      layout DCLinkVoltage      log_Vdc_m        Data [2001 1], IsTimeFirst=1 -> 2001 samples x 1 columns
+[2026-10-21 16:06:46.095]      layout WheelSpeed         log_omega_wheel  Data [20001 1], IsTimeFirst=1 -> 20001 samples x 1 columns
+[2026-10-21 16:06:46.117] 2/14 Raw data (as logged, unmodified)
+[2026-10-21 16:06:47.614]      Raw_Archive/02_Raw_Data: 20001 rows x 11 columns in 1 part(s) (pack level; 0 repeated time stamps removed, last sample kept)
+[2026-10-21 16:06:47.836] 3/14 Raw archive compaction (exact duplicate columns, constants, RLE only where it is smaller)
+[2026-10-21 16:06:52.315]      278 columns -> 149 stored (129 exact duplicates merged, 0 constant, 0 run-length coded with 0 segments, 149 dense)
+[2026-10-21 16:06:52.318]      reconstruction check: SKIPPED (audit mode OFF - skipped for speed/memory)
+[2026-10-21 16:06:52.483] 4/14 Cleaning, normalization, 1 ms common time base
+[2026-10-21 16:06:53.404]      cell diagnostics: 1 ms grid, aggregated statistics, events
+[2026-10-21 16:06:54.482]      cleaned data: 201 rows x 14 columns ; cell diagnostics: 201 rows (1 ms), 13 V-cells, 130 current columns, 130 SOC, 0 temperature, 0 event(s), 0 invalid row(s) removed
+[2026-10-21 16:06:54.854]      Live telemetry: 2 rows captured DURING the simulation (period 0.100 s, simulation time)
+[2026-10-21 16:06:54.943] 5/14 Parameters and setup
+[2026-10-21 16:06:55.329] 6/14 Logging audit
+[2026-10-21 16:06:55.403] 7/14 V&V
+[2026-10-21 16:06:55.481] 8/14 Signal map
+[2026-10-21 16:06:55.518] 9/14 Group summary
+[2026-10-21 16:06:55.561] 10/14 Event log
+[2026-10-21 16:06:55.773] 11/14 Figures
+[2026-10-21 16:07:08.969] 12/14 Excel reports (12 report files + EV_Master_Data.xlsx)
+[2026-10-21 16:07:15.855]      EV_Master_Data.xlsx formatting: applied (frozen header, AutoFilter, auto-size, number formats)
+[2026-10-21 16:07:16.316]      13 Excel files written, 0.19 MB in total
+[2026-10-21 16:07:16.318] 13/14 Reports written; post-processing 30.60 s
+[2026-10-21 16:07:16.467] 14/14 Archive complete
+[2026-10-21 16:07:16.809] 14b/14 Black-Box SysID complete
+[2026-10-21 16:07:49.763] 14c/14 Numbered clean data, comparison graphs and reference Excel complete
+
+---------------- WARNINGS ----------------
+none
+---------------- ERRORS ------------------
+none
