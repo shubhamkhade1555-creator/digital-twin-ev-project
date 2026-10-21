@@ -179,13 +179,15 @@ if bdIsLoaded(MDL)
     if ~strcmpi(get_param(MDL, 'SimulationStatus'), 'stopped')
         error('RunAll:running', 'Model %s is still running. Press STOP, wait for Ready, then run again.', MDL);
     end
-    close_system(MDL, 0);      % reload from disk so every group member runs the file as saved
-    say('[RunAll]    closed the old copy of %s (reload from disk).', MDL);
+    % Preserve in-memory edits. close_system(MDL,0) discarded unsaved sensor changes.
+    say('[RunAll]    preserving the already-open model %s; no close/reload.', MDL);
+else
+    load_system(fullfile(root, [MDL '.slx']));
+    say('[RunAll]    loaded saved model %s.', MDL);
 end
 if ~isempty(userStop)
-    load_system(fullfile(root, [MDL '.slx']));
-    set_param(MDL, 'StopTime', sprintf('%.10g', userStop));   % re-apply: the reload gave back the value saved on disk
-    say('[RunAll]    model Stop Time set to %g s after the reload.', userStop);
+    set_param(MDL, 'StopTime', sprintf('%.10g', userStop));
+    say('[RunAll]    model Stop Time set to %g s.', userStop);
 end
 % clear results of an earlier run so they cannot be mistaken for this run
 evalin('base', 'clear EV_BlackBox_log EV_DAQ_Clean EV_DAQ_Raw EV_DAQ_RunDir EV_MakeRef_Name EV_MakeRef_Busy');
@@ -198,6 +200,8 @@ try
     end
     say('[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...');
     feval(BUILDER, 'Run', false);
+    say('[RunAll] 6c. Ensure battery voltage/current measurement Scopes ...');
+    feval(BUILDER, 'Sensors');
 catch ME
     R = rarec(R, say, 'FAIL', 'DAQ setup', ME.message);
     result = rafinish(result, R, say, root, stamp, toc(tAll));
