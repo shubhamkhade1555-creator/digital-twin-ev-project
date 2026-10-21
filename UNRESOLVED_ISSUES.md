@@ -21,6 +21,16 @@ Every item is rigorously categorized into:
 
 ---
 
+## 1A. Latest Repository Verification Correction (22-Oct-2026)
+
+**Status: PARTIAL FIX — simulation verification still required.** The repository's saved SysID report records raw validation fits of approximately -50.2% for battery voltage and -51.4% for battery current. These scores do not establish satisfactory dynamic generalization, even when physical-unit RMSE is numerically small on the final steady-state hold segment.
+
+The existing `EV_SysID_Auto.m` has been corrected so raw fit below the configured warning threshold is recorded as **FAIL**, not a warning excused by presumed variance collapse. This does not itself improve the identified model; it prevents an unacceptable validation result from being reported as an acceptable one. A separate dynamic validation run is still required.
+
+The existing `RunAll.m` has also been corrected to require the full 0.400 s benchmark in full-validation mode, including a second check of the effective model stop time after DAQ setup. Short runs remain available only when explicitly marked as diagnostic. This correction has not been certified by executing MATLAB R2024b in this GitHub environment.
+
+The 0.400 s run still uses a final hold-heavy validation segment. A negative raw fit must remain a failure until the model is evaluated against a genuinely independent dynamic validation segment/run and the baseline, initial-condition handling, and direct-feedthrough assumptions are checked. No motor or battery physical parameter is considered validated by these code changes.
+
 ## 2. Status Ledger of Engineering Gaps & Audit Items
 
 ### GAP-01: Battery Cell Resistance Lookup Table Mismatch
