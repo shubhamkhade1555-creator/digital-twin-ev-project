@@ -1835,7 +1835,13 @@ TM.VV = toc(t0);   evMem('After V&V');
 %% ---- 12  figures ---------------------------------------------------------
 t0 = tic;
 LG('11/14 Figures');
-if cfg.fast, LG('     FAST mode: figures skipped'); else, makeFigures(Clean, runDir, figDir, LG); end
+if cfg.fast
+    LG('     FAST mode: legacy figures skipped');
+elseif logical(safeBase('EV_BlackBox_PlotsV2', true))
+    LG('     V2 mode: legacy DAQ figures disabled; dedicated black-box comparison plots run after SysID');
+else
+    makeFigures(Clean, runDir, figDir, LG); % legacy plotting path, opt-in only
+end
 TM.Figures = toc(t0);
 
 %% ---- 13  the 12 Excel files ----------------------------------------------
@@ -1917,10 +1923,26 @@ catch ME_bb
     fprintf('[DAQ]    Black-Box SysID skipped (non-fatal): %s\n', ME_bb.message);
 end
 
-%% ---- 14c  numbered clean data + comparison graphs + reference Excel, inside THIS run folder ----
+% V2 is the default graph pipeline. It creates comparison plots only; no dashboard.
+if ~cfg.fast && logical(safeBase('EV_BlackBox_PlotsV2', true))
+    try
+        fprintf('[DAQ] 14c. Black-Box comparison plots V2 ...\n');
+        if exist('EV_BlackBox_ComparePlotsV2', 'file') == 2
+            EV_BlackBox_ComparePlotsV2(Clean, runDir);
+            LG('14c/14 Black-Box comparison plots V2 complete');
+        else
+            LG('14c/14 V2 plotting function missing: EV_BlackBox_ComparePlotsV2.m');
+        end
+    catch ME_v2
+        LG(sprintf('14c/14 Black-Box comparison plots V2 skipped: %s', ME_v2.message));
+        fprintf('[DAQ]    V2 comparison plots skipped (non-fatal): %s\\n', ME_v2.message);
+    end
+end
+
+%% ---- 14d legacy reference-comparison plots + reference Excel (opt-in only) ----
 % EV_MakeReference does it, so Run in Simulink (typed Stop Time) and RunAll give the same files:
 %   EV_RUN_<time>\EV_DAQ_Clean_<run no>_<seconds x 10>.mat/.csv , Figures\Battery , Figures\Motor , MASTER files + Excel
-if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))      % EV_Ref_Skip = true skips the reference graphs + Excel only
+if ~cfg.fast && ~logical(safeBase('EV_BlackBox_PlotsV2', true)) && ~logical(safeBase('EV_Ref_Skip', false)) % legacy plots opt-in
     try
         fprintf('[DAQ] 14c. Clean data + comparison graphs + reference Excel ...\n');
         if exist('EV_MakeReference', 'file') == 2
