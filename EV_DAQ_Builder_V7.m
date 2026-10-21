@@ -1834,14 +1834,14 @@ EvtT = eventTable(Clean, P);
 TM.VV = toc(t0);   evMem('After V&V');
 
 %% ---- 12  figures ---------------------------------------------------------
+% The legacy DAQ PNG generator has been removed. EV_BlackBox_ComparePlotsV2.m
+% is the only graph generator used by this workflow (called after SysID below).
 t0 = tic;
 LG('11/14 Figures');
 if cfg.fast
-    LG('     FAST mode: legacy figures skipped');
-elseif logical(safeBase('EV_BlackBox_PlotsV2', true))
-    LG('     V2 mode: legacy DAQ figures disabled; dedicated black-box comparison plots run after SysID');
+    LG('     FAST mode: graph generation skipped');
 else
-    makeFigures(Clean, runDir, figDir, LG); % legacy plotting path, opt-in only
+    LG('     Legacy DAQ graphs disabled/removed; V2 graph generator runs after SysID');
 end
 TM.Figures = toc(t0);
 
@@ -2904,70 +2904,6 @@ L = {bar,'  EV DIGITAL TWIN SIMULATION',bar, ...
      sprintf('  FINAL V&V STATUS   : %s', vv), bar};
 end
 
-function makeFigures(C, runDir, figDir, LG)
-t = C.Time;
-fg = [];
-try
-    fg = figure('Visible','off','Position',[50 50 1000 560],'Color','w');   % ONE figure, reused for every plot
-catch ME
-    LG(['Figures skipped: ' ME.message]);  return
-end
-sf = @(fn, plotFn) saveFig(fg, figDir, fn, plotFn, LG);
-sf('Speed.png',           @() plotSet(t, {col(C,'RPMReference'),col(C,'RPM')}, {'RPM reference','RPM'}, 'Motor Speed: Reference vs Actual', 'Speed [rpm]'));
-sf('Battery_Voltage.png', @() plotSet(t, {col(C,'BatteryVoltage')}, {'Battery voltage'}, 'Battery Voltage vs Time', 'Voltage [V]'));
-sf('Battery_Current.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
-sf('Battery_Current_Corrected.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
-sf('Motor_Current.png',   @() plotSet(t, {col(C,'MotorCurrent')}, {'Motor current (log_Idc_f)'}, 'Motor Current vs Time', 'Current [A]'));
-sf('SOC.png',             @() plotSet(t, {col(C,'SOC')}, {'SOC'}, 'State of Charge vs Time', 'SOC [0..1]'));
-sf('DC_Link.png',         @() plotSet(t, {col(C,'DCLinkVoltage')}, {'DC-link voltage'}, 'DC-Link Voltage vs Time', 'DC-Link Voltage [V]'));
-sf('DC_Link_Voltage_Corrected.png', @() plotSet(t, {col(C,'DCLinkVoltage')}, {'DC-link voltage'}, 'DC-Link Voltage vs Time', 'DC-Link Voltage [V]'));
-sf('V_and_I_Overview.png',@() overview(C));
-try, close(fg); catch, end
-end
-
-function saveFig(fg, figDir, fname, plotFn, LG)
-f = fullfile(figDir, fname);
-cfgF = evCfg();
-try
-    clf(fg);
-    plotFn();
-    res = 150;
-    try, exportgraphics(fg, f, 'Resolution', res); catch, saveas(fg, f); end
-    d = dir(f);
-    while ~isempty(d) && d.bytes >= cfgF.maxBytes && res > 20      % PNG must stay < 20 MB
-        res = max(20, round(res/2));
-        exportgraphics(fg, f, 'Resolution', res);  d = dir(f);
-    end
-catch ME
-    LG(sprintf('Figure %s error: %s', fname, ME.message));
-end
-end
-
-function plotSet(t, ys, labs, ttl, yl)
-hold on;  n = 0;
-for k = 1:numel(ys)
-    if any(isfinite(ys{k})), plot(t, ys{k}, 'LineWidth', 1.6, 'DisplayName', labs{k}); n = n + 1; end
-end
-if n == 0
-    text(0.5,0.5,'NOT AVAILABLE - signal not logged by model','Units','normalized','HorizontalAlignment','center');
-else
-    legend('Location','best');
-end
-title(ttl); xlabel('Time [s]'); ylabel(yl); grid on; box on;
-end
-
-function overview(C)
-t = C.Time;
-sp = {{'BatteryVoltage','Battery Voltage','V'},{'BatteryCurrent','Battery Current','A'}, ...
-      {'RPM','Motor RPM','rpm'},{'MotorCurrent','Motor Current','A'}};
-for k = 1:4
-    subplot(2,2,k);  x = col(C, sp{k}{1});
-    if any(isfinite(x)), plot(t, x, 'LineWidth', 1.4, 'DisplayName', sp{k}{2}); legend('Location','best');
-    else, text(0.5,0.5,'NOT AVAILABLE','Units','normalized','HorizontalAlignment','center'); end
-    title(sp{k}{2}); xlabel('Time [s]'); ylabel(sprintf('%s [%s]', sp{k}{2}, sp{k}{3})); grid on;
-end
-try, sgtitle('Voltage, Current and Speed Overview'); catch, end
-end
 
 function finalReport(runID, MDL, simDur, FR, rawOk, daqOk, cleanOk, auditOk, vv, runDir, nWarn, xlOk)
 fl = @(a,b) fprintf('%-20s: %s\n', a, b);
