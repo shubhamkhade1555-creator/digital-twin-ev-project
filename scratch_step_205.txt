@@ -1,0 +1,543 @@
+<USER_REQUEST>
+# MASTER INSTRUCTION TO AI AGENT — EV DIGITAL TWIN BUG FIXES, VALIDATION AND REPORT CORRECTION
+
+## 1. Project Objective
+
+Project: **Design and Development of a Black-Box Model-Based Real-Time Digital Twin for an Electric Vehicle Battery Using MATLAB/Simulink**
+
+Target environment: MATLAB/Simulink R2024b.
+
+Main model: `BLDCSpeedControl_EV_Layout_v2.slx`
+
+Main scripts:
+- `RunAll.m`
+- `BLDCSpeedControlData.m`
+- `EV_DAQ_Builder_V7.m`
+- `EV_SysID_Auto.m`
+- `EV_BatteryCheck.m`
+
+Main outputs:
+- `EV_BlackBox_SysID.mat`
+- `EV_BlackBox_SysID_Report.txt`
+- `EV_DAQ_Clean_*.csv`
+- `04_VV_Results.xlsx`
+- `EV_Digital_Twin_COMPLETE_ROOT_CAUSE_AUDIT.md`
+- `EV_Digital_Twin_ROOT_CAUSE_REGISTER.xlsx`
+
+Your task is to inspect, correct and validate the existing project. Do not rebuild the complete project from scratch unless a verified technical reason makes it necessary.
+
+The objective is to obtain a reproducible, technically consistent simulation and a validated black-box battery model that predicts the intended outputs. Keep the current implementation's limitations explicit.
+
+## 2. Mandatory Rules Before Editing
+
+1. Inspect the complete repository and identify the active model, parameter file, scripts, libraries, data files and run archives.
+2. Create a timestamped backup of all files before changing anything.
+3. Never overwrite the only working model or original experimental/simulation data.
+4. Use a dedicated working copy or Git branch for modifications.
+5. Record the baseline model hash, script versions, MATLAB version, configuration and run ID.
+6. Identify which files are actually loaded by MATLAB. Do not assume the first file with a familiar name is active.
+7. Do not change several unrelated parameters simultaneously without recording the reason.
+8. Do not invent measurements, fit percentages, test results, datasheet values or missing signals.
+9. Do not claim a fix is verified until the corrected project has been tested.
+10. Use MATLAB R2024b-compatible syntax and APIs.
+11. If a test cannot run, record the exact reason, error and required dependency.
+12. Keep the original baseline results available for comparison.
+
+Use the existing baseline run `EV_RUN_20261021_161504` (reported stop time 0.400 s) as the primary historical reference, and `EV_RUN_20261021_172910` (reported stop time 0.200 s) as the short-run comparison. Verify the files and settings before relying on these records.
+
+---
+
+# PHASE 1 — PROJECT INVENTORY AND BASELINE
+
+## ISSUE-00: Project integrity and baseline provenance
+
+### Required work
+- Inspect the model and all relevant scripts.
+- Determine the actual loaded parameter values.
+- Identify the source CSV and validation workbook for each run.
+- Verify model and script timestamps and versions.
+- Check for stale MAT files, duplicate model files, broken library references and missing dependencies.
+- Check whether the active model and the report refer to the same configuration.
+
+### Required output
+Create:
+- `BASELINE_INVENTORY.md`
+- `BASELINE_FILE_MANIFEST.csv`
+- `BASELINE_RUN_CONFIGURATION.txt`
+
+For every baseline run, record:
+- Run ID
+- Model filename and hash
+- Parameter file and hash
+- MATLAB release
+- Solver and sample times
+- Stop time
+- Load profile
+- Speed reference and ramp
+- Initial SOC and battery temperature
+- Source CSV and validation results
+- System Identification MAT file and report
+
+### Acceptance criteria
+No numerical results are merged across different runs without explicit documentation. The baseline must be reproducible or clearly marked as not reproducible.
+
+# PHASE 2 — SYSTEM IDENTIFICATION
+
+## ISSUE-06: Correct the black-box input/output mapping
+
+### Historical defect
+The root `EV_BlackBox_SysID.mat` reportedly contains:
+
+Inputs:
+`RPM_rpm`, `Idc_f_A`
+
+Outputs:
+`Vbatt_V`, `SOC`, `RPM_rpm`
+
+This legacy model does not predict battery current and includes RPM as both an input and output.
+
+### Required fix
+1. Inspect the actual MAT file and the code that generated it.
+2. Inspect all available signals and determine which are valid measured or simulated inputs.
+3. Define a battery-focused input/output mapping consistent with the project objectives.
+4. Remove the duplicated RPM output unless predicting RPM is an explicit objective supported by a suitable model.
+5. Include `Ibatt_A` as an output only if the identification data and model structure support predicting it.
+6. Determine whether SOC is an output to be predicted or a separately calculated reference.
+7. Do not include temperature as an output until a valid temperature measurement or thermal simulation signal is available.
+8. Save the newly estimated model to a new, versioned file first.
+9. Replace the root model only after the new model passes the required checks.
+
+### Required outputs
+- `EV_BlackBox_SysID_v2.mat`
+- `EV_SysID_Signal_Mapping.md`
+- `EV_BlackBox_SysID_Report.txt`
+
+### Acceptance criteria
+The saved MAT file's input and output labels must match the signals actually used by the estimation script. No output may be claimed unless it exists in the final model and has supporting validation evidence.
+
+## ISSUE-07: Fix fit calculation and negative validation fit
+
+### Historical defects
+- An older script reportedly extracted the wrong output from MATLAB `compare()`.
+- A later validation reportedly produced voltage fit around -2158.9% and current fit around -2167.0%.
+- The validation interval reportedly contains mostly steady-state data.
+
+### Required fix
+1. Inspect the actual `compare()` call and use the documented output corresponding to the fit result.
+2. Check the returned dimensions and types before saving or displaying fit values.
+3. Inspect the exact training and validation sample indices.
+4. Calculate the mean, standard deviation, range and variance of every validation output.
+5. Calculate residuals using the same samples as the measured and predicted signals.
+6. Confirm that the validation denominator is not close to zero.
+7. Use a separate validation dataset that contains meaningful dynamic changes.
+8. If only a single 0.4-second run is available, do not randomly claim independent validation. Obtain another run or clearly state the limitation.
+9. Evaluate whether the chosen input signals sufficiently excite the dynamics being identified.
+10. Compare candidate model orders using validation evidence, not just training fit.
+11. Check stability and residual behaviour, but do not use stable poles alone as proof of good prediction.
+12. Save all fit metrics with units, run ID, validation interval and model version.
+
+### Required outputs
+- Measured-versus-predicted voltage graph
+- Measured-versus-predicted battery current graph
+- Residual-versus-time graphs
+- Validation variance report
+- Model-order comparison
+- Updated fit summary
+
+### Acceptance criteria
+No artificial positive fit value is permitted. If validation remains poor, report the actual result and diagnose the remaining issue. Do not label the model validated merely because the fit calculation no longer throws an error.
+
+## ISSUE-12: Confirm the selected model order and sample time
+
+### Historical information
+The root model reportedly uses six states, whereas the newer estimation script reportedly selected two states.
+
+### Required fix
+- Verify the actual state-space matrices and model metadata.
+- Confirm sample time is 0.001 s if that is the final identification sampling interval.
+- Compare reasonable model orders using separate validation data.
+- Inspect residuals, stability and prediction performance.
+- Explain why the final order was selected.
+
+### Acceptance criteria
+The report, MAT file and MATLAB script must all agree on the final model order and sample time. Do not force six states simply because an earlier report used that order.
+
+---
+
+# PHASE 3 — MOTOR MODEL AND CONTROL
+
+## ISSUE-01: Verify the BLDC back-EMF and torque constant
+
+### Historical information
+The audit reports:
+- Target torque constant: 0.107 Nm/A
+- Proposed factor: kappa = 0.72
+- Proposed phase back-EMF parameter: approximately 0.1486 V·s/rad
+- Some reported simulations give effective torque constants around 0.105–0.108 Nm/A.
+
+These figures are not interchangeable unless they use compatible torque, current, speed and parameter definitions.
+
+### Required fix
+1. Inspect the actual Simscape BLDC block documentation and parameter definitions.
+2. Verify winding type, pole pairs, back-EMF lookup table and rotor-angle conventions.
+3. Determine whether the parameter represents phase-neutral peak, line-to-line, flat-top amplitude or another quantity.
+4. Verify the conversion formula for the actual block. Do not assume kappa = 0.72 is universally correct.
+5. Calculate the effective torque constant using aligned signals and a documented steady-state window.
+6. Separate electromagnetic torque, shaft torque and load torque.
+7. Compare the result with the manufacturer's definition of Kt.
+8. Keep the existing parameter if it is correct; change it only if the block definition and evidence justify the correction.
+
+### Acceptance criteria
+The model's effective torque constant must be calculated from traceable data and compared with the datasheet using compatible conventions. Report the actual error and uncertainty where possible.
+
+## ISSUE-02: Resolve the acceleration-current warning
+
+### Historical warning
+The reported ramp is 13000 rpm/s and the estimated inertia current is approximately 30.4 A, slightly above the configured 30 A continuous rating.
+
+### Required fix
+1. Inspect the total inertia calculation and every inertia contribution.
+2. Confirm whether wheel, gearbox, rotor and vehicle inertia are included and reflected through the correct gear ratio.
+3. Verify the actual speed reference ramp and current limiter implementation.
+4. Calculate acceleration current from the verified total inertia and angular acceleration.
+5. Run a baseline and a controlled lower-ramp test.
+6. Test 11500 rpm/s as a candidate, not as an assumed correct final value.
+7. Compare acceleration time, peak current, speed tracking and subsequent loaded behaviour.
+8. If current limiting is required, verify that it acts on the intended current signal and does not introduce instability.
+
+### Acceptance criteria
+The final ramp rate must be selected using measured simulation results. The motor must respect the specified peak-current and continuous-operation requirements for the intended operating profile. Clearly separate short transient limits from continuous ratings.
+
+## ISSUE-03: Resolve motor-current metrics
+
+### Historical discrepancy
+Reported values include:
+- Whole-run RMS: 26.41 A or 28.63 A in different records.
+- Final-window mean current: approximately 30.30 A.
+- Full-load current figures reaching approximately 32.8 A.
+- A configured continuous-current limit of 30 A.
+
+### Required fix
+1. Recalculate every metric from its source CSV.
+2. Record the exact run ID and time interval.
+3. Define the signal: phase current, phase RMS, current magnitude, DC-equivalent current or another quantity.
+4. Calculate whole-run RMS, peak current, full-load-window mean and final-window mean separately.
+5. Determine whether the 30 A rating applies to the signal being tested.
+6. Use a sufficiently long steady-state window after the load ramp.
+7. Do not use the whole-run RMS pass to claim the steady-state current passes.
+8. Do not reduce load solely to hide an unresolved discrepancy. If reduced load is a separate test case, document it separately.
+
+### Acceptance criteria
+The same raw data must reproduce all reported metrics. The final verdict must follow the actual acceptance criterion for each metric.
+
+## ISSUE-11: Reconcile motor resistance and inductance
+
+### Historical values
+The audit reports:
+- Datasheet line-to-line resistance: 0.043 ohm.
+- Wye phase resistance derived from that value: 0.0215 ohm.
+- Model phase resistance: 0.1 ohm.
+- Datasheet line-to-line inductance: 0.21 mH.
+- Model parameters: Ls = 80 microhenry and Ms = 10 microhenry.
+- Under the stated relationship, model line-to-line inductance is 0.14 mH.
+
+### Required fix
+1. Confirm the exact motor model and manufacturer's datasheet revision.
+2. Verify the definitions of phase resistance and inductance in the Simscape block.
+3. Confirm whether the inductance measurement convention and test frequency match the model convention.
+4. Check the actual loaded values after model initialization.
+5. Calculate the expected equivalent values using the verified winding configuration.
+6. If the block's documented relationship is Lll = 2(Ls - Ms), the arithmetic solution for 0.21 mH with Ms = 0.01 mH is Ls = 0.115 mH. Use this only after confirming that the relationship and conventions apply.
+7. Do not directly replace Rs or Ls without examining the impact on current ripple, electrical losses, controller tuning and numerical stability.
+8. Run baseline and corrected-parameter tests and compare the relevant outputs.
+
+### Acceptance criteria
+All parameter conversions must be documented. The model must not claim exact physical motor matching while known parameter discrepancies remain unresolved.
+
+## ISSUE-13: Verify the simulation stop-time and test schedule
+
+### Historical defect
+A 0.20-second run ends before the reported 0.227-second speed ramp completion and 0.28-second load ramp completion.
+
+### Required fix
+- Inspect `RunAll.m` and the actual active stop-time configuration.
+- Enforce a minimum stop time appropriate to the test being performed.
+- Use at least 0.40 s for the documented historical full-load test, or select a longer duration if the new acceptance criteria require it.
+- Include an adequate post-load steady-state interval.
+- Keep a short-run diagnostic mode if useful, but label it as unsuitable for full-load acceptance testing.
+- Prevent validation scripts from classifying an incomplete run as a valid full-load test.
+
+### Acceptance criteria
+The test runner must distinguish startup tests, acceleration tests, load-step tests and steady-state tests. Each must have a defined stop time and its own acceptance criteria.
+
+---
+
+# PHASE 4 — BATTERY MODEL AND MEASUREMENTS
+
+## ISSUE-08: Verify battery cell resistance and pack equivalence
+
+### Historical model
+- 13 series groups and 10 parallel cells.
+- Cell capacity: 5 Ah.
+- Pack capacity: 50 Ah.
+- Nominal voltage: 48.1 V.
+- Maximum nominal cell-cutoff pack voltage: 54.6 V.
+- Reported active cell resistance at 20 °C: approximately 8.5 mOhm.
+- Calculated active pack resistance: approximately 0.01105 ohm.
+- Proposed physical comparison: approximately 0.0364 ohm using an assumed 28 mOhm per-cell DC resistance.
+
+### Required fix
+1. Verify the exact battery cell model and its official datasheet.
+2. Determine whether the quoted resistance is AC impedance or DC internal resistance.
+3. Check the measurement frequency, SOC, temperature and pulse duration for the reference resistance.
+4. Inspect the actual cell resistance lookup table and its units.
+5. Verify the parallel/series equivalent resistance calculation.
+6. Determine whether the current lookup table was inherited from a different cell template.
+7. Keep the active model value unchanged during the initial audit reproduction.
+8. Build a corrected battery parameter set in a separate branch or model variant if the reference data supports it.
+9. Compare terminal voltage sag and electrical losses between the original and corrected parameter sets.
+10. If authentic cell data is unavailable, retain the existing value as an explicit model assumption and state that physical accuracy has not been established.
+
+### Acceptance criteria
+Do not claim the pack matches a physical Samsung 50E pack unless the lookup table and model parameterization are supported by suitable cell data. Report modeled and reference values separately.
+
+## ISSUE-14: Verify battery voltage, capacity, SOC and sign convention
+
+### Required fix
+1. Confirm 13S10P topology, total cell count, nominal capacity and voltage.
+2. Check that nominal and full-charge voltages are not confused.
+3. Inspect battery-current signs in Simscape, the raw logger and the cleaned CSV.
+4. Document the conversion from internal current convention to positive-discharge engineering convention.
+5. Ensure current integration uses the correct sign and capacity units.
+6. Verify SOC remains within the valid range and follows the expected trend during discharge.
+7. Compare simulated SOC with an independently calculated Coulomb-counting reference using matching sample times and initial conditions.
+8. Do not use the model's own SOC output as an independent validation reference without clearly stating the dependency.
+
+### Acceptance criteria
+SOC, current direction, pack capacity and voltage must be consistent across the model, CSV, MAT file and report.
+
+## ISSUE-05: Correct DC-link current and power measurement claims
+
+### Historical finding
+The audit says no physical DC-link current sensor exists and `Idc_f` is estimated from phase-current magnitudes and filtered.
+
+### Required fix
+1. Verify the model wiring and signal definition.
+2. If feasible, add a correctly placed DC-link current sensor in a separate model copy.
+3. Confirm sensor orientation and sign convention.
+4. Compare the direct current measurement with the controller estimate under steady-state and transient conditions.
+5. If no sensor is added, retain the estimate but label it as estimated DC-link current.
+6. Align voltage and current signals in time.
+7. Compare instantaneous and averaged powers separately.
+8. Account for energy stored in capacitors and inductors when analysing transient power balance.
+9. Do not claim converter efficiency from an estimated current without an adequate measurement justification.
+
+### Acceptance criteria
+The report must distinguish measured electrical power from estimated power. Any converter efficiency must use a defensible measurement or estimation method and a documented operating interval.
+
+## ISSUE-09: Resolve missing temperature and reference-speed logging
+
+### Required fix
+1. Verify whether cell temperature and reference-speed signals exist in the active model.
+2. Route the actual speed reference to the logger if it is available but not recorded.
+3. Do not reconstruct a reference signal and present it as measured data.
+4. If temperature is not dynamically modelled, mark it unavailable for prediction.
+5. If thermal prediction is a project requirement, propose a separate thermal-model implementation with defined heat generation, thermal mass, heat transfer and boundary conditions.
+6. Validate temperature prediction only against suitable measured or independently generated thermal reference data.
+
+### Acceptance criteria
+No synthetic temperature result may be presented as a validated physical prediction. Clearly state the current thermal-model limitations.
+
+---
+
+# PHASE 5 — DATA ACQUISITION AND VALIDATION
+
+## ISSUE-15: Validate the DAQ pipeline and time alignment
+
+### Required fix
+- Inspect `EV_DAQ_Builder_V7.m`.
+- Verify all source signals, signal names, units and dimensions.
+- Check time-vector alignment, duplicate columns, missing samples and NaNs.
+- Verify the 1 ms logging and window-averaging method.
+- Check that resampling does not introduce misleading signal values.
+- Confirm that all CSV columns correspond to the correct source signals.
+- Compare selected logged values with the original simulation logs.
+- Keep raw data separate from cleaned data.
+- Store the cleaning method and any discarded or transformed columns in a manifest.
+
+### Acceptance criteria
+The output dataset must have an unambiguous time base, correct column mapping and documented data transformations. Any filtering or averaging must be described in the report.
+
+## ISSUE-16: Rebuild and verify the V&V checks
+
+### Required fix
+For every validation check:
+1. Document its name, metric, formula, units and acceptance threshold.
+2. Identify the source signal and evaluation window.
+3. Confirm the metric is appropriate for that signal.
+4. Recalculate the metric from the actual run data.
+5. Handle missing data and incomplete runs explicitly.
+6. Verify that the check returns PASS, WARN, FAIL or NOT AVAILABLE according to its documented rule.
+7. Separate physical limits from project-specific test thresholds.
+8. Do not change thresholds simply to obtain a passing result.
+9. Include the actual numerical result and expected range in the output workbook.
+
+### Acceptance criteria
+Every PASS must be supported by a reproducible calculation. A missing signal, incomplete simulation or invalid validation dataset must not silently produce a PASS.
+
+---
+
+# PHASE 6 — DIGITAL TWIN ARCHITECTURE
+
+## ISSUE-10: Define the actual integration level
+
+### Historical finding
+The state-space model is reportedly saved in a MAT file and estimated offline, without a state-space block connected to the active Simulink plant.
+
+### Required fix
+1. Verify whether the state-space model is used anywhere in the active Simulink diagram or runtime logic.
+2. If it is offline only, document the current implementation as an offline identification/digital-shadow workflow.
+3. Do not claim closed-loop state-estimation feedback unless it exists and has been tested.
+4. If integration is part of the project scope, develop it as a separate workstream after the offline model has acceptable validation performance.
+5. Define the model input/output interface and sample time before integration.
+6. Check initialization, state updates, signal units, saturation and numerical behaviour.
+7. Compare the integrated model against the offline model and the original plant.
+8. Do not allow a poorly validated state-space model to control the physical or simulated plant without suitable safeguards.
+
+### Acceptance criteria
+The report must accurately state whether the model is offline, running in parallel, estimating states, or feeding back into control. Do not use these terms interchangeably.
+
+---
+
+# PHASE 7 — FINAL REPORT AND REGISTER
+
+## ISSUE-17: Synchronize the audit report and Excel register
+
+### Required fix
+Update:
+- `EV_Digital_Twin_COMPLETE_ROOT_CAUSE_AUDIT.md`
+- `EV_Digital_Twin_ROOT_CAUSE_REGISTER.xlsx`
+- System Identification report
+- V&V results workbook
+- Project technical report
+
+Ensure all documents agree on:
+- Issue IDs and names
+- Severity and status
+- Model version and run ID
+- Parameter values and units
+- Test windows
+- Actual measured/calculated values
+- Acceptance criteria
+- Fix evidence
+- Remaining limitations
+- Future work
+
+Use these statuses consistently:
+- **Verified:** repeatable test supports the conclusion.
+- **Calculated:** derived from a documented formula and verified inputs.
+- **Reported:** taken from an existing report but not independently reproduced.
+- **Open:** defect or discrepancy remains.
+- **Not Available:** required signal or capability is absent.
+- **Future Work:** not yet implemented or validated.
+
+Do not call the project production-grade unless that classification is justified by explicit requirements and validation evidence.
+
+### Required final outputs
+1. `EV_Digital_Twin_FINAL_AUDIT.md`
+2. `EV_Digital_Twin_ROOT_CAUSE_REGISTER_FINAL.xlsx`
+3. `EV_BlackBox_SysID_FINAL.mat`
+4. `EV_BlackBox_SysID_FINAL_REPORT.txt`
+5. `EV_VV_FINAL_RESULTS.xlsx`
+6. `EV_FINAL_RESULTS.csv`
+7. `EV_FINAL_PLOTS/`
+8. `CHANGELOG.md`
+9. `UNRESOLVED_ISSUES.md`
+10. `FINAL_VALIDATION_SUMMARY.md`
+
+Do not overwrite the original audit or data files. Keep dated revisions.
+
+---
+
+# PHASE 8 — FINAL ACCEPTANCE TESTS
+
+The project is ready for final reporting only when the following have been checked.
+
+## Test A: Model and configuration
+- Model opens in the target MATLAB release.
+- Required libraries and parameters resolve.
+- Simulation completes without unexplained solver failures.
+- Actual run settings match the recorded configuration.
+
+## Test B: Battery behaviour
+- Voltage is within physically and model-appropriate bounds.
+- Current direction and units are correct.
+- SOC behaviour is consistent with the defined current convention.
+- Battery capacity and resistance assumptions are documented.
+- Thermal behaviour is claimed only if supported by the active thermal model.
+
+## Test C: Motor behaviour
+- Speed tracking is evaluated over the correct operating phases.
+- Torque and current use compatible definitions.
+- Peak and continuous-current criteria are evaluated separately.
+- Resistance, inductance and back-EMF parameters are justified.
+- Load-step and steady-state behaviour are evaluated over a sufficient time window.
+
+## Test D: Power measurements
+- Battery power calculation uses the correct voltage and current.
+- DC-link power is labelled measured or estimated correctly.
+- Mechanical power uses torque and rotational speed from a compatible location and interval.
+- Efficiency is reported only when its measurement basis is defensible.
+
+## Test E: System Identification
+- Input/output labels match the saved model.
+- Model order and sample time are verified.
+- Training and validation datasets are identified.
+- Dynamic validation is performed where suitable data is available.
+- Fit metrics and residual plots are reproducible.
+- Poor fits remain documented as failures or limitations.
+
+## Test F: Reporting
+- All graphs come from identified source data.
+- All numerical results can be reproduced.
+- Report and Excel issue statuses agree.
+- Open defects are not marked as fixed.
+- All final files are saved in a separate, clearly identified output folder.
+
+---
+
+# FINAL INSTRUCTION TO THE AGENT
+
+Work through the phases in order. Start with repository inspection and a baseline report. Fix confirmed software defects first, then investigate model parameter discrepancies, then rerun validation, and finally update the technical report.
+
+For every issue, record:
+
+1. Original behaviour.
+2. Root-cause evidence.
+3. Exact file and parameter changed.
+4. Reason for the change.
+5. Baseline result.
+6. Corrected result.
+7. Test procedure and run ID.
+8. Acceptance criterion.
+9. PASS, WARN, FAIL or NOT VERIFIED status.
+10. Any remaining limitations.
+
+Do not silently assume that a recommended value is correct. In particular, treat the motor back-EMF conversion, motor resistance/inductance, cell resistance, current rating conventions and DC-link power calculations as items requiring documented verification.
+
+If a proposed correction fails or creates a new issue, preserve the evidence, report the failure and do not conceal it.
+
+**Success means a reproducible, technically consistent EV battery simulation and a defensibly validated black-box model—not simply a report in which every issue is marked PASS.**
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-22T00:09:46+05:30.
+
+The user's current state is as follows:
+Active Document: c:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\EV_Digital_Twin_COMPLETE_ROOT_CAUSE_AUDIT.md (LANGUAGE_MARKDOWN)
+Cursor is on line: 2
+Other open documents:
+- c:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\EV_Digital_Twin_COMPLETE_ROOT_CAUSE_AUDIT.md (LANGUAGE_MARKDOWN)
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Gemini 3.8 Flash (Medium) to Claude Opus 4.6 (Thinking). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
