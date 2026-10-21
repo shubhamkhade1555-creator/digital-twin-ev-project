@@ -114,15 +114,15 @@ for dd_ = {figDir, batDir, motDir}
 end
 if show, vis = 'on'; else, vis = 'off'; end
 items = { ...   % ours field, reference field, label, unit, file name, short note
-  'Vb',    'Vbatt',  'Battery voltage',      'V',    'Battery_1_Voltage', 'Ref: OCV 44-54 V and Rint 0.05 ohm assumed (not in paper)';
-  'Ib',    'Ibatt',  'Battery current',      'A',    'Battery_2_Current', 'Plotted discharge-positive (sign flipped from the logged BatteryCurrent). Ref from paper Kt, Ke, eta';
-  'SOC',   'SOC',    'State of charge',      '-',    'Battery_3_SOC',     'SOC moves <0.01 % in 0.5 s: agreement not meaningful';
-  'Vcell', 'Vcell',  'Battery cell voltage', 'V',    'Battery_4_Cell',    'Ours 13S10P; ref 16 cells assumed (not in paper)';
-  'Vmotor','Vmotor', 'Motor voltage',        'V',    'Motor_1_Voltage',   'Ours = DC-link proxy (motor voltage not logged)';
-  'Im',    'Imotor', 'Motor current',        'A',    'Motor_2_Current',   'Ref Kt = 0.153 (paper). Measured Kt 0.245 gives ~13 A';
-  'RPM',   'RPM',    'Motor RPM',            'rpm',  'Motor_3_RPM',       'Ref follows our 2950 rpm command';
-  'speed', 'speed',  'Vehicle speed',        'km/h', 'Motor_4_Speed',     'Paper has no vehicle: our gear 11:1 and wheel 0.25 m used';
-  'Vdc',   'Vdc',    'DC-link voltage',      'V',    'Motor_5_DCLink',    'Ref = 48 V boost bus (paper); ours buck output ramps from 0'};
+  'Vb',    'Vbatt',  'Battery voltage',           'V',    'Battery_1_Voltage', 'Illustrative OCV/Rint curve (not measured reference data)';
+  'Ib',    'Ibatt',  'Battery discharge current',  'A',    'Battery_2_Current', 'Discharge-positive convention matched on both traces';
+  'SOC',   'SOC',    'State of charge',           '-',    'Battery_3_SOC',     'Coulomb counting comparison; delta SOC < 0.01% in 0.4 s';
+  'Vcell', 'Vcell',  'Battery cell voltage',      'V',    'Battery_4_Cell',    'Matched 13S10P cell configuration (Vpack/13)';
+  'Vmotor','Vmotor', 'Motor voltage proxy',       'V',    'Motor_1_Voltage',   'Ours = DC-link proxy (motor terminal voltage not directly logged)';
+  'Im',    'Imotor', 'Motor current',             'A',    'Motor_2_Current',   'Motor current tracking (Kt = 0.107 Nm/A)';
+  'RPM',   'RPM',    'Motor RPM tracking',        'rpm',  'Motor_3_RPM',       'Command tracking (2950 rpm target)';
+  'speed', 'speed',  'Vehicle speed estimate',    'km/h', 'Motor_4_Speed',     'Derived estimate from motor speed (gear 11:1, wheel 0.25 m)';
+  'Vdc',   'Vdc',    'DC-link voltage',           'V',    'Motor_5_DCLink',    'Buck converter output voltage vs 48 V target'};
 AG = zeros(size(items,1), 2);
 for k = 1:size(items,1)
     o = S.(items{k,1});  r = Rf.(items{k,2});
@@ -204,7 +204,7 @@ end
 
 function S = raOurs(Cl, t)
 S.Vb  = raCol(Cl, 'BatteryVoltage', nan(size(t)));
-S.Ib  = -raCol(Cl, 'BatteryCurrent', nan(size(t)));      % discharge positive
+S.Ib  = raCol(Cl, 'BatteryCurrent', nan(size(t)));       % already positive on discharge (no double flip)
 S.SOC = raCol(Cl, 'SOC', []);
 if isempty(S.SOC), S.SOC = 1 - cumtrapz(t, S.Ib)/(3600*50); end   % coulomb count, 50 Ah pack
 S.RPM = raCol(Cl, 'RPM', nan(size(t)));
@@ -230,7 +230,7 @@ k      = 0.153;
 Rline  = (25.91 - k*1460*2*pi/60)/13.2;
 Kt_eff = 3.24/13.2;
 eta    = mean([83.29 83.48 83.73 82.85 83.36 83.01])/100;
-J = 0.002; Rint = 0.05; Vlo = 44; Vhi = 54; Ah = 24; Ncell = 16; Vbus = 48;
+J = 0.002; Rint = 0.05; Vlo = 44; Vhi = 54; Ah = 24; Ncell = 13; Vbus = 48; % Ncell matched to 13S pack
 Par = struct('k',k,'Rline',Rline,'Kt_eff',Kt_eff,'eta',eta,'Ah',Ah,'Vbus',Vbus, ...
              'Rint',Rint,'J',J,'Vlo',Vlo,'Vhi',Vhi,'Ncell',Ncell);
 if strcmp(mode, 'original'), Kt = Kt_eff; else, Kt = k; end

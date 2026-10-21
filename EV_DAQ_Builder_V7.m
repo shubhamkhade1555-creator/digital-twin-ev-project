@@ -2892,10 +2892,12 @@ end
 sf = @(fn, plotFn) saveFig(fg, figDir, fn, plotFn, LG);
 sf('Speed.png',           @() plotSet(t, {col(C,'RPMReference'),col(C,'RPM')}, {'RPM reference','RPM'}, 'Motor Speed: Reference vs Actual', 'Speed [rpm]'));
 sf('Battery_Voltage.png', @() plotSet(t, {col(C,'BatteryVoltage')}, {'Battery voltage'}, 'Battery Voltage vs Time', 'Voltage [V]'));
-sf('Battery_Current.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery current'}, 'Battery Current vs Time', 'Current [A]'));
+sf('Battery_Current.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
+sf('Battery_Current_Corrected.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
 sf('Motor_Current.png',   @() plotSet(t, {col(C,'MotorCurrent')}, {'Motor current (log_Idc_f)'}, 'Motor Current vs Time', 'Current [A]'));
 sf('SOC.png',             @() plotSet(t, {col(C,'SOC')}, {'SOC'}, 'State of Charge vs Time', 'SOC [0..1]'));
-sf('DC_Link.png',         @() plotSet(t, {col(C,'DCLinkVoltage'),col(C,'DCLinkCurrent')}, {'DC-link voltage [V]','DC-link current [A] (not logged)'}, 'DC-Link Voltage and Current', 'V / A'));
+sf('DC_Link.png',         @() plotSet(t, {col(C,'DCLinkVoltage')}, {'DC-link voltage'}, 'DC-Link Voltage vs Time', 'DC-Link Voltage [V]'));
+sf('DC_Link_Voltage_Corrected.png', @() plotSet(t, {col(C,'DCLinkVoltage')}, {'DC-link voltage'}, 'DC-Link Voltage vs Time', 'DC-Link Voltage [V]'));
 sf('V_and_I_Overview.png',@() overview(C));
 try, close(fg); catch, end
 end
