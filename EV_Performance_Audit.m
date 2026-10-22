@@ -252,6 +252,10 @@ writetable(T,csvFile);
 fprintf('\n[EV_AUDIT] Read-only checks complete. No compile/simulation was run.\n');
 fprintf('[EV_AUDIT] Text report: %s\n[EV_AUDIT] CSV report : %s\n',txtFile,csvFile);
 disp(T);
+
+    function add(status,check,value,recommendation)
+        rows(end+1,:) = {char(status),char(check),clip(value,1000),char(recommendation)}; %#ok<AGROW>
+    end
 end
 
 function v = safeGet(obj,prop,default)
@@ -312,10 +316,6 @@ end
 function s = clip(s,n)
 s = regexprep(stringValue(s),'[\r\n]+',' ');
 if numel(s) > n, s = [s(1:n-3) '...']; end
-end
-
-function add(status,check,value,recommendation)
-rows(end+1,:) = {char(status),char(check),clip(value,1000),char(recommendation)}; %#ok<AGROW>
 end
 
 function out = iif(c,a,b)
