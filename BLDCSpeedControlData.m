@@ -72,6 +72,16 @@ cells_parallel = 10;
 cell_Ah        = pack_Ah/cells_parallel;  % 5 Ah per cell
 Ah_pack        = cell_Ah*cells_parallel;
 
+%% Thermal logging parameters (provisional; calibrate against dedicated tests)
+T_amb_C      = 25;           % ambient baseline [degC], within motor datasheet range
+G_motor_hous = 18*0.0407;     % housing-to-ambient conductance [W/K]; h=18 W/m^2/K and area=0.0407 m^2 are estimates
+C_batt_cell  = 100;           % per-cell thermal capacitance [J/K]; provisional model value, not a verified 21700 property
+C_motor_rotor  = 200;         % rotor thermal capacitance [J/K]; provisional
+C_motor_stator = 100;         % stator thermal capacitance [J/K]; provisional
+% Temperature calibration placeholders; retain unity gain/zero bias until calibrated.
+gain_T_motor = 1; bias_T_motor = 0;
+gain_T_batt  = 1; bias_T_batt  = 0;
+
 %% Control parameters
 Ts  = 1e-5;     % Fundamental sample time            [s]  FINAL: 10 us = 2x faster than the old 5 us baseline
                 % (verified: 15 PASS / 4 WARN / 0 FAIL, 2950.2 rpm, motor current -0.36 %, RPM error 0.017 %)
