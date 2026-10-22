@@ -328,7 +328,7 @@ assignin('base', 'EV_SysID_BestEligible', bestEligible);
 bbMat = fullfile(runDir, 'EV_BlackBox_SysID.mat');
 try
     save(bbMat, 'sys_blackbox', 'A', 'B', 'C', 'D', 'U0', 'Y0', 'Us', 'Ys', ...
-        'labels_u', 'labels_y', 'Ze', 'Zv', 'bestN', 'cfg', ...
+        'labels_u', 'labels_y', 'Ze', 'Zv', 'tv', 'bestN', 'cfg', ...
         'bestFit_1step', 'bestFit_free', ...
         'bestRMSE_1step', 'bestMAE_1step', 'bestBias_1step', 'bestTol_1step', ...
         'bestRMSE_free', 'bestMAE_free', 'bestBias_free', 'bestTol_free', ...
@@ -355,6 +355,16 @@ try
     fprintf(fid, 'Leakage         : ZERO - scaling parameters derived strictly on estimation slice [1:%d]\n', Nest);
     fprintf(fid, 'Best order      : nx = %d (stable=%d, max pole=%.4f)\n', bestN, model_stable, maxPole);
     fprintf(fid, 'Acceptance      : %s\n', iif(modelAccepted, 'ACCEPTED', 'NOT ACCEPTED / PROVISIONAL (Negative dynamic fit)'));
+    fprintf(fid, '\n--- MODEL-ORDER SWEEP EVALUATION (nx = %d..%d) ---\n', cfg.orders(1), cfg.orders(end));
+    fprintf(fid, 'Order  Stable  1-Step Fit (V / I)    Free-Run Fit (V / I)        Free RMSE (V / I)\n');
+    fprintf(fid, '--------------------------------------------------------------------------------\n');
+    for q_sw = 1:size(sweep,1)
+        fprintf(fid, 'nx=%-2d  %-6d  %6.1f%% / %6.1f%%  %10.1f%% / %10.1f%%   %8.4f V / %6.2f A\n', ...
+            sweep(q_sw,1), sweep(q_sw,2), sweep(q_sw,3), sweep(q_sw,4), sweep(q_sw,5), sweep(q_sw,6), sweep(q_sw,7), sweep(q_sw,8));
+    end
+    fprintf(fid, '--------------------------------------------------------------------------------\n');
+    fprintf(fid, 'Note: Unstable candidate models (stable=0) exhibit divergent free-run trajectories\n');
+    fprintf(fid, 'and are excluded from acceptance eligibility and plot scaling.\n');
     fprintf(fid, '\n--- DUAL VALIDATION METRICS ---\n');
     fprintf(fid, '1-Step Prediction:\n');
     fprintf(fid, '  Vbatt_V : RMSE = %.4f V, MAE = %.4f V, Bias = %+.4f V, Fit = %6.1f%%, +/-10%% Tol = %.1f%%\n', ...
@@ -375,10 +385,10 @@ try
     fprintf(fid, 'Baseline model without feedthrough (D=0) suffered an Ibatt RMSE of ~30.9 A to 32.6 A due to\n');
     fprintf(fid, 'state-variable ringing during load transition. Enabling direct feedthrough (Feedthrough=1)\n');
     fprintf(fid, 'allows direct algebraic transmission of inverter current, reducing Ibatt RMSE to %.2f A (<9%% error).\n', bestRMSE_free(2));
-    fprintf(fid, 'NOTE ON NEGATIVE RAW FIT:\n');
-    fprintf(fid, 'The validation window (0.28 to 0.40 s) is a steady-state hold with output standard deviation\n');
-    fprintf(fid, 'of only 15.3 mV for Vbatt. NRMSE denominator (sum of squared deviations from mean) approaches zero,\n');
-    fprintf(fid, 'causing NRMSE fit to calculate as -50.2%% despite physical RMSE being only 22.9 mV (0.04%% error).\n');
+    fprintf(fid, 'NOTE ON DYNAMIC VALIDATION FIT:\n');
+    fprintf(fid, 'Validation window (%.3f to %.3f s) has output standard deviation of %.4f V for Vbatt and %.2f A for Ibatt.\n', ...
+        tv(1), tv(end), std(y_val_phys(:,1)), std(y_val_phys(:,2)));
+    fprintf(fid, 'Free-run physical RMSE is %.4f V for Vbatt and %.2f A for Ibatt.\n', bestRMSE_free(1), bestRMSE_free(2));
     fprintf(fid, '\nTo open the System Identification app with this run:  systemIdentification  then import EV_Ze / EV_Zv from the workspace.\n');
     fclose(fid);
 catch

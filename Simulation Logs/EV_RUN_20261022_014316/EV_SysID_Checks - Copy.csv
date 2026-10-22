@@ -1,0 +1,12 @@
+Check,Result,Detail
+Data source,PASS,"EV_DAQ_Clean (1 ms window means, PWM ripple averaged)"
+Samples,PASS,"401 samples, 0.400 s"
+Excitation,PASS,"RPM range 2979 rpm, current range 33.0 A"
+Estimation,PASS,"n4sid (Feedthrough=1), best order nx = 2 (of 1..6)"
+Model stable,PASS,"largest pole magnitude 0.7733 (< 1)"
+Model scaling,PASS,"largest B/C entry 198 (normalised data)"
+Vbatt Physical Error,PASS,"RMSE = 0.0229 V, MAE = 0.0193 V (< 0.50 V threshold)"
+Ibatt Physical Error,PASS,"RMSE = 2.06 A, MAE = 1.74 A (< 5.0 A threshold)"
+Raw Fit Vbatt_V,WARN,"-50.2 % (Steady-state variance collapse; physical RMSE is primary)"
+Raw Fit Ibatt_A,WARN,"-51.4 % (Steady-state variance collapse; physical RMSE is primary)"
+Saved model,PASS,"C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_014316\EV_BlackBox_SysID.mat"
