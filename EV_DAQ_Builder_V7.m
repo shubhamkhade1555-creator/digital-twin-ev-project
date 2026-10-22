@@ -640,7 +640,9 @@ d = {
  'vbatt',       {'log_vcell','log_vbatt'},     'V',        'Battery', 'Battery voltage';
  'ibatt',       {'log_icell','log_ibatt'},     'A',        'Battery', 'Battery current';
  'soc',         {'log_soc'},                   '-',        'Battery', 'State of charge';
- 'temperature', {'log_temp','temperature'},    'degC',     'Battery', 'Battery temperature';
+ 'temperature', {'log_Tbatt_C','log_temp','temperature'}, 'degC', 'Battery', 'Battery temperature (calibrated pack/cell aggregate)';
+ 'battmaxtemp', {'log_TbattMax_C'},              'degC',     'Battery', 'Maximum battery cell temperature';
+ 'motortemp',   {'log_Tmotor_C'},                'degC',     'Motor',   'Motor housing temperature';
  'vdc',         {'log_Vdc_m','log_vdc_m'},     'V',        'DC-Link', 'DC link voltage';
  'omega_wheel', {'log_omega_wheel'},           'as-logged','Vehicle', 'Wheel speed';
 };
@@ -649,6 +651,7 @@ end
 function n = evKeySpecName(key)
 m = struct('rpm','RPM','rpm_ref','RPMReference','torque','MotorTorque','imotor','MotorCurrent', ...
     'vbatt','BatteryVoltage','ibatt','BatteryCurrent','soc','SOC','temperature','BatteryTemperature', ...
+    'battmaxtemp','BatteryTemperatureMax','motortemp','MotorTemperature', ...
     'vdc','DCLinkVoltage','omega_wheel','WheelSpeed');
 n = m.(key);
 end
@@ -662,6 +665,8 @@ d = {
  'BatteryPower',          '',           'derived', 'W',   'Battery', 'YES','NO', 'BatteryVoltage*BatteryCurrent';
  'SOC',                   'soc',        'logged',  '-',   'Battery', 'YES','YES','State of charge';
  'BatteryTemperature',    'temperature','logged',  'degC','Battery', 'YES','NO', 'Battery temperature';
+ 'BatteryTemperatureMax', 'battmaxtemp','logged',  'degC','Battery', 'YES','NO', 'Maximum battery cell temperature';
+ 'MotorTemperature',      'motortemp',  'logged',  'degC','Motor',   'YES','NO', 'Motor housing temperature';
  'DCLinkVoltage',         'vdc',        'logged',  'V',   'DC-Link', 'YES','NO', 'DC link voltage';
  'DCLinkCurrent',         '',           'none',    'A',   'DC-Link', 'YES','NO', 'No DC-link current logged in model';
  'DCLinkPower',           '',           'none',    'W',   'DC-Link', 'NO', 'NO', 'No DC-link current logged in model';
@@ -931,7 +936,7 @@ BB_NAME  = 'EV_BlackBox';
 ZOH_NAME = 'EV_BB_ZOH';
 TW_VAR   = 'EV_BlackBox_log';
 Ts_bb    = 1e-3;                       % 1 kHz log
-BB_TAG   = 'EV_BB_v7_6_lp';            % bump when the BB layout changes: an older BB is then rebuilt
+BB_TAG   = 'EV_BB_v7_7_thermal';       % rebuild existing BB to add optional motor and battery temperature channels
 bbPath   = [MDL '/' BB_NAME];
 
 %% ---- idempotency: keep a healthy existing BB (ZOH present AND every port connected)
@@ -972,6 +977,8 @@ sigs = {
     'Vdc_m_V',     {'Vdc_m'},           'log_Vdc_m',       'V',         '',     0.5e-3;
     'omega_wheel', {'MON_Wheel_Speed'}, 'log_omega_wheel', 'as-logged', '',     0;
     'Torque_Nm',   {'Tq_meas'},         'log_Tq_meas',     'Nm',        '',     0.5e-3;
+    'Tmotor_C',    {'MON_Tmotor_C'},    'log_Tmotor_C',    'degC',      '',     0;
+    'Tbatt_C',     {'MON_Tbatt_C'},     'log_Tbatt_C',     'degC',      '',     0;
 };
 
 %% ---- inspect every Goto in the model once (only GLOBAL tags are readable from the BB)
@@ -2351,7 +2358,8 @@ function L = makeLive(C)
 cfgL = evCfg();  tl = (0:cfgL.Ts_live:C.Time(end))';
 L = table(tl,'VariableNames',{'Time'});
 want = {'BatteryVoltage','BatteryCurrent','SOC','BatteryPower','DCLinkVoltage','RPMReference','RPM', ...
-        'MotorTorque','MotorCurrent','WheelSpeed','BatteryTemperature','MotorMechanicalPower','Efficiency'};
+        'MotorTorque','MotorCurrent','WheelSpeed','BatteryTemperature','BatteryTemperatureMax','MotorTemperature', ...
+        'MotorMechanicalPower','Efficiency'};
 for k = 1:numel(want)
     if ismember(want{k}, C.Properties.VariableNames)
         L.(want{k}) = interp1(C.Time, C.(want{k}), tl, 'linear', NaN);
@@ -2821,7 +2829,9 @@ R = {mrow('Voltage min',min(vb,[],'omitnan'),'V','');
      mrow('Initial SOC',s0,'-','');
      mrow('Final SOC',s1,'-','');
      mrow('SOC change',s1-s0,'-','final - initial');
-     mrow('Temperature mean',mean(tmp,'omitnan'),'degC','NOT_AVAILABLE (not logged)')};
+     mrow('Temperature mean',mean(tmp,'omitnan'),'degC',iif(any(isfinite(tmp)),'logged signal','NOT_AVAILABLE (not logged)'));
+     mrow('Temperature maximum',max(tmp,[],'omitnan'),'degC',iif(any(isfinite(tmp)),'logged signal','NOT_AVAILABLE (not logged)'));
+     mrow('Maximum cell temperature (dedicated channel)',max(col(C,'BatteryTemperatureMax'),[],'omitnan'),'degC',iif(any(isfinite(col(C,'BatteryTemperatureMax'))),'logged signal','NOT_AVAILABLE (not logged)'))};
 T = mtab(R);
 end
 
@@ -3931,8 +3941,8 @@ end
 
 function sh = evSheets07(GrpT, LT13)
 L = {'Battery',{'BatteryVoltage','BatteryCurrent','BatteryPower','SOC'}; 'DC_Link',{'DCLinkVoltage','DCLinkCurrent','DCLinkPower'}; ...
-     'Motor',{'RPM','MotorTorque','MotorMechanicalPower','MotorCurrent','Efficiency'}; 'Vehicle',{'WheelSpeed'}; ...
-     'Controller',{'RPMReference','SpeedError'}; 'Thermal',{'BatteryTemperature'}};
+     'Motor',{'RPM','MotorTorque','MotorMechanicalPower','MotorCurrent','MotorTemperature','Efficiency'}; 'Vehicle',{'WheelSpeed'}; ...
+     'Controller',{'RPMReference','SpeedError'}; 'Thermal',{'BatteryTemperature','BatteryTemperatureMax','MotorTemperature'}};
 sh = cell(size(L,1)+1, 2);
 for k = 1:size(L,1)
     sh(k,:) = {L{k,1}, GrpT(ismember(GrpT.Signal, L{k,2}),:)};
@@ -4087,6 +4097,8 @@ defs = {'Battery_Voltage_V','BatteryVoltage',1,'logged'; 'Battery_Current_A','Ba
         'Battery_Power_W','BatteryPower',1,'DERIVED'; 'DC_Link_Voltage_V','DCLinkVoltage',1,'logged'; 'DC_Link_Current_A','DCLinkCurrent',1,'logged'; ...
         'RPM_Reference_rpm','RPMReference',1,iif(ci.RefDerived,'DERIVED','logged'); 'Motor_RPM_rpm','RPM',1,'logged'; ...
         'Motor_Torque_Nm','MotorTorque',1,'logged'; 'Motor_Current_A','MotorCurrent',1,'logged'; ...
+        'Battery_Temperature_C','BatteryTemperature',1,'logged'; 'Battery_Temperature_Max_C','BatteryTemperatureMax',1,'logged'; ...
+        'Motor_Temperature_C','MotorTemperature',1,'logged'; ...
         'Phase_A_Current_A','PhaseCurrentA',1,'logged'; 'Phase_B_Current_A','PhaseCurrentB',1,'logged'; 'Phase_C_Current_A','PhaseCurrentC',1,'logged'; ...
         'Wheel_Speed_as_logged','WheelSpeed',1,'logged'; 'Vehicle_Speed_m_s','VehicleSpeed',1,'logged'; ...
         'Mechanical_Power_W','MotorMechanicalPower',1,'DERIVED'; 'Efficiency_percent','Efficiency',1,'DERIVED'};
