@@ -8,7 +8,7 @@ function result = RunAll(varargin)
 %                           currently typed in the Simulink toolbar of the open model; only if the model is
 %                           not open it uses the value saved in the .slx file.
 %   RunAll('Compile',true)  also run a separate compile check first (default off: one compile less, faster start)
-%   RunAll('Fast',true)     skip Excel files, figures and raw-archive compaction (much shorter wait after the run)
+%   RunAll('Fast',true)     fast mode (default): skip Excel workbooks and raw-archive compaction; retain CSV/text, V&V, N4SID and PNG graphs
 %
 %   HOW TO USE (every group member):
 %     1. Put RunAll.m in the SAME folder as BLDCSpeedControl_EV_Layout_v2.slx and EV_DAQ_Builder_V7.m
@@ -25,7 +25,7 @@ function result = RunAll(varargin)
 %   STEP 10: unified Battery, Motor and N4SID graph generation through EV_Graphs.m.
 %     RunAll and the model StopFcn use the same graph source; duplicate generation is avoided.
 %     Figures are saved under each run's Figures\Battery, Figures\Motor,
-%     Figures\N4SID_Battery and Figures\N4SID_Motor folders. PNG (300 dpi) and vector PDF are used where supported.
+%     Figures\N4SID_Battery and Figures\N4SID_Motor folders. PNG (300 dpi) only; PDF export is disabled.
 %     PASS/FAIL verdicts remain in text/CSV reports and are not written on graphs.
 %
 %   RunAll does NOT change any physics or parameter. It only calls the existing project files.
@@ -34,7 +34,7 @@ p = inputParser;
 addParameter(p, 'Fixes',   true, @islogical);
 addParameter(p, 'Timeout', 3600, @isnumeric);
 addParameter(p, 'StopTime', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && x > 0));
-addParameter(p, 'Fast', [], @(x) isempty(x) || islogical(x));
+addParameter(p, 'Fast', true, @islogical); % fast post-processing is default; pass Fast=false for full Excel reports
 addParameter(p, 'Compile', false, @islogical);   % true = separate compile check before the run (the run compiles anyway; skipping saves one full Simscape compile)
 addParameter(p, 'FullValidation', true, @islogical); % enforce duration >= 0.400 s (min 0.350 s) for speed ramp, load ramp & hold
 addParameter(p, 'DiagnosticMode', false, @islogical); % allow short-run diagnostic simulations (< 0.350 s)
@@ -111,8 +111,8 @@ end
 if ~any(strcmp(names, 'Simscape Battery')) || ~any(strcmp(names, 'Simscape Electrical'))
     R = rarec(R, say, 'WARN', 'Products', 'Simscape Electrical / Battery not detected - the model may fail to compile');
 end
-if ~ispc
-    R = rarec(R, say, 'WARN', 'Excel reports', 'not Windows - the Excel files of the archive need Excel (COM) and may be skipped or fail');
+if ~ispc && ~p.Results.Fast
+    R = rarec(R, say, 'WARN', 'Excel reports', 'not Windows - full Excel reporting requires Excel/COM and may be skipped or fail');
 end
 
 %% ---- 3b. remember the Stop Time the user typed in the toolbar (the reload in step 5 would discard it) ---
@@ -126,7 +126,12 @@ if isempty(userStop) && bdIsLoaded(MDL)
     catch
     end
 end
-if ~isempty(p.Results.Fast), assignin('base', 'EV_DAQ_Fast', p.Results.Fast); end
+assignin('base', 'EV_DAQ_Fast', p.Results.Fast);
+if p.Results.Fast
+    say('[RunAll] Fast mode ON: Excel workbooks and raw-archive compaction skipped; raw/clean data, Black Box, V&V, N4SID and PNG graphs retained.');
+else
+    say('[RunAll] Full reporting mode ON: Excel workbooks and raw-archive compaction enabled.');
+end
 
 %% ---- 4. parameters ------------------------------------------------------------------------------
 say('[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...');
@@ -492,8 +497,8 @@ end
 
 %% ---- 10. Unified graph generation (also invoked by the Simulink StopFcn) ---------------------
 say('[RunAll] 10. Unified Battery/Motor/N4SID graphs ...');
-if logical(rav('EV_DAQ_Fast', false)) || logical(rav('EV_Ref_Skip', false))
- say('[RunAll] Fast mode / EV_Ref_Skip: graph generation skipped.');
+if logical(rav('EV_DAQ_SkipGraphs', false)) || logical(rav('EV_Ref_Skip', false))
+ say('[RunAll] PNG graph generation explicitly skipped (EV_DAQ_SkipGraphs/EV_Ref_Skip).');
 else
  try
   graphDone=false;
