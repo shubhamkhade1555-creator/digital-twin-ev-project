@@ -1927,7 +1927,7 @@ evPrintPerformance(PM, cfg, TM, CA, vvStr, tEnd, P);
 if ~cfg.fast
     evPrintExcelStructure(infos, cfg, CA, PM, CM, CV);
 else
-    fprintf('[DAQ] FAST mode: Excel structure audit skipped; CSV/text outputs retained.\\n');
+    fprintf('[DAQ] FAST mode: Excel structure audit skipped; CSV/text outputs retained.\n');
 end
 LG('14/14 Archive complete');
 
