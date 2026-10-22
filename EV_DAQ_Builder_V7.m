@@ -2548,14 +2548,17 @@ else
     rows(end+1,:) = na('VV-010','SOC at t = 0','SOC'); rows(end+1,:) = na('VV-011','SOC coulomb count','SOC'); %#ok<AGROW>
 end
 % VV-012  battery power against DC-link power (independent check of the battery current)
-pdc = vdc .* im;  pbt = abs(vb .* ib);
+% V8: the DC-link power uses the MEASURED DC-link current only. MotorCurrent (log_Idc_f) is a controller
+% estimate and must not be used as Idc: without a logged DCLinkCurrent the check is NOT_AVAILABLE.
+idcMeas = col(C,'DCLinkCurrent');  haveIdcMeas = any(isfinite(idcMeas));
+pdc = vdc .* idcMeas;  pbt = abs(vb .* ib);
 mk = isfinite(pdc) & isfinite(pbt);
-if any(mk) && mean(pbt(mk)) >= 1
+if haveIdcMeas && any(mk) && mean(pbt(mk)) >= 1
     rb = mean(abs(pdc(mk)))/mean(pbt(mk));
-    rows(end+1,:) = vr('VV-012','Battery power follows the DC-link power: mean|Vdc*Idc| / mean|Vbat*Ibat| (converter efficiency)','BatteryCurrent', ...
+    rows(end+1,:) = vr('VV-012','Battery power follows the DC-link power: mean|Vdc*Idc| / mean|Vbat*Ibat| (measured DCLinkCurrent)','BatteryCurrent', ...
         'mean|Vdc*Idc| / mean|Vbat*Ibat|',sprintf('%.2f..%.2f',cfg.vvPbalance), rb, 0, sprintf('%.2f..%.2f',cfg.vvPbalance), rb >= cfg.vvPbalance(1) && rb <= cfg.vvPbalance(2)); %#ok<AGROW>
 else
-    rows(end+1,:) = na('VV-012','Battery power vs DC-link power','BatteryCurrent'); %#ok<AGROW>
+    rows(end+1,:) = na('VV-012','Battery power vs DC-link power (NOT_AVAILABLE: no measured DCLinkCurrent logged)','BatteryCurrent'); %#ok<AGROW>
 end
 % VV-013 / VV-014  cell voltages
 if nargin >= 3 && ~isempty(CD) && isfield(CD,'OK') && CD.OK && height(CD.Summary) > 0
@@ -2614,12 +2617,12 @@ else
     rows(end+1,:) = na('VV-023','Hold-window current','MotorCurrent'); %#ok<AGROW>
 end
 mkR = mk & t >= 0.02 & t <= tRamp;            % ramp phase only, startup (first 20 ms) excluded
-if nnz(mkR) > 5
+if haveIdcMeas && nnz(mkR) > 5
     rR = mean(abs(pdc(mkR)))/mean(pbt(mkR));
-    rows(end+1,:) = vr('VV-024','Ramp-phase power balance mean|Vdc*Idc|/mean|Vbat*Ibat| (Idc = 2 ms filtered controller estimate)','BatteryCurrent', ...
+    rows(end+1,:) = vr('VV-024','Ramp-phase power balance mean|Vdc*Idc|/mean|Vbat*Ibat| (measured DCLinkCurrent)','BatteryCurrent', ...
         'ratio, 0.02 s <= t <= ramp end',sprintf('%.2f..%.2f',cfg.vvPbalance),rR,0,sprintf('%.2f..%.2f',cfg.vvPbalance), rR >= cfg.vvPbalance(1) && rR <= cfg.vvPbalance(2)); %#ok<AGROW>
 else
-    rows(end+1,:) = na('VV-024','Ramp-phase power balance','BatteryCurrent'); %#ok<AGROW>
+    rows(end+1,:) = na('VV-024','Ramp-phase power balance (NOT_AVAILABLE: no measured DCLinkCurrent logged)','BatteryCurrent'); %#ok<AGROW>
 end
 % ---------------- V7.1: limits judged on the RAW 10 us data (Ts = 1e-5) (averaging must never hide a limit violation) ----------------
 if nargin >= 4 && istable(Raw) && all(ismember({'BatteryCurrent','BatteryVoltage'}, Raw.Properties.VariableNames))
