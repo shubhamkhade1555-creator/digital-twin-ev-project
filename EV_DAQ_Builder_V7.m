@@ -1936,23 +1936,14 @@ if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))      % EV_Ref_Skip = tr
 end
 
 
-%% ---- 14d  automatic additional comparisons for both Simulink Run and RunAll ---------------------
-% Runs in this StopFcn callback, so manual Simulink execution and RunAll share
-% one post-processing path. The utility writes separate, uniquely named files
-% and skips any channel/reference that is not genuinely present in Clean.
+%% ---- 14d  integrated motor comparison graphs (same file; manual Run + RunAll) ---------------
+% Keep graph logic in this existing DAQ builder: no extra MATLAB helper file is required.
+% The Simulink StopFcn runs this block for both toolbar Run and RunAll.
 if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))
     try
-        if exist('EV_MakeComparisonGraphs', 'file') == 2
-            fprintf('[DAQ] 14d. Unique motor/powertrain comparison graphs ...\\n');
-            optsGraphs = struct( ...
-                'OutputDir', fullfile(runDir, 'Figures', 'Comparisons'), ...
-                'ShowFigures', false, ...
-                'TimeRange', []);
-            EV_MakeComparisonGraphs(Clean, [], optsGraphs);
-            LG('14d/14 Unique motor/powertrain comparison graphs complete');
-        else
-            LG('14d/14 skipped: EV_MakeComparisonGraphs.m not found on MATLAB path');
-        end
+        fprintf('[DAQ] 14d. Integrated motor/powertrain comparisons ...\\n');
+        evAutoComparisonGraphs(Clean, runDir, P);
+        LG('14d/14 Integrated motor/powertrain comparison graphs complete');
     catch ME_cmp
         LG(sprintf('14d/14 Motor comparison graphs skipped: %s', ME_cmp.message));
         fprintf('[DAQ]    Motor comparison graphs skipped (non-fatal): %s\\n', ME_cmp.message);
@@ -4388,4 +4379,147 @@ if p.Results.Solver, fprintf('--- step 2: local solver -> Backward Euler ---\n')
 if p.Results.Tune,   fprintf('--- step 4: Vdc filter T = 0.002 s ---\n');        evModelFixes(MDL,4); end
 fprintf('--- DAQ setup (builds + saves EV_BlackBox) %s ---\n', iif(p.Results.Run,'and simulation start','only'));
 feval(mfilename, 'Run', p.Results.Run);
+end
+
+function evAutoComparisonGraphs(Clean, runDir, P)
+% Integrated comparison plotting helper for EV_DAQ_Builder_V7.m.
+% Writes graph outputs into the run's existing Figures folders. Only draws
+% comparisons when a real reference/limit is available; never synthesizes
+% black-box motor predictions or substitutes DC-link voltage for motor voltage.
+if ~istable(Clean) || height(Clean) < 2
+    error('Clean DAQ data is missing or is not a table.');
+end
+vn = Clean.Properties.VariableNames;
+if ~ismember('Time',vn)
+    error('Clean data has no Time column.');
+end
+t = double(Clean.Time(:));
+motorDir = fullfile(runDir,'Figures','Motor');
+if ~isfolder(motorDir), mkdir(motorDir); end
+made = {};
+
+% 1) Motor RPM tracking: actual vs the run's reference profile.
+rpm = evCmpCol(Clean, {'RPM','MotorRPM','MotorSpeed'});
+rpmRef = evCmpCol(Clean, {'RPMReference','RPM_Reference','rpm_ref','SpeedReference'});
+if ~isempty(rpm) && ~isempty(rpmRef)
+    f = figure('Visible','off','Color','w','Position',[80 80 1100 650]);
+    plot(t,rpmRef,'k--','LineWidth',1.5,'DisplayName','RPM reference'); hold on;
+    plot(t,rpm,'b','LineWidth',1.3,'DisplayName','Actual simulated RPM');
+    grid on; box on; xlabel('Time [s]'); ylabel('Speed [rpm]');
+    title('Motor RPM comparison - reference vs actual','Interpreter','none');
+    legend('Location','best');
+    evCmpSave(f,fullfile(motorDir,'Motor_RPM_Comparison.png')); made{end+1}='Motor_RPM_Comparison.png';
+end
+
+% 2) Motor current vs configured continuous/peak current thresholds.
+% Thresholds are protection limits, not model predictions.
+im = evCmpCol(Clean, {'MotorCurrent','Imotor','I_motor'});
+if ~isempty(im)
+    f = figure('Visible','off','Color','w','Position',[80 80 1100 650]);
+    plot(t,im,'k','LineWidth',1.25,'DisplayName','Logged motor current'); hold on;
+    if isfield(P,'I_cont') && isfinite(P.I_cont)
+        yline(P.I_cont,'b--','LineWidth',1.2,'DisplayName',sprintf('Continuous limit %.1f A',P.I_cont));
+        yline(-P.I_cont,'b--','LineWidth',1.2,'HandleVisibility','off');
+    end
+    if isfield(P,'I_peak') && isfinite(P.I_peak)
+        yline(P.I_peak,'r:','LineWidth',1.2,'DisplayName',sprintf('Peak limit %.1f A',P.I_peak));
+        yline(-P.I_peak,'r:','LineWidth',1.2,'HandleVisibility','off');
+    end
+    grid on; box on; xlabel('Time [s]'); ylabel('Current [A]');
+    title('Motor current comparison - measured signal vs current limits','Interpreter','none');
+    legend('Location','best');
+    evCmpSave(f,fullfile(motorDir,'Motor_Current_Comparison.png')); made{end+1}='Motor_Current_Comparison.png';
+end
+
+% 3) Motor torque against an explicitly logged load/reference torque.
+tq = evCmpCol(Clean, {'MotorTorque','Torque','Tmotor'});
+tqRef = evCmpCol(Clean, {'MotorLoadTorqueReference','LoadTorqueReference','TorqueReference','LoadTorqueRef'});
+if ~isempty(tq) && ~isempty(tqRef)
+    f = figure('Visible','off','Color','w','Position',[80 80 1100 650]);
+    plot(t,tqRef,'k--','LineWidth',1.4,'DisplayName','Logged torque/load reference'); hold on;
+    plot(t,tq,'b','LineWidth',1.3,'DisplayName','Actual motor torque');
+    grid on; box on; xlabel('Time [s]'); ylabel('Torque [N m]');
+    title('Motor torque comparison - actual vs reference','Interpreter','none');
+    legend('Location','best');
+    evCmpSave(f,fullfile(motorDir,'Motor_Torque_Comparison.png')); made{end+1}='Motor_Torque_Comparison.png';
+end
+
+% 4) Motor terminal voltage against an explicitly logged motor-voltage command
+% or reference. DC-link voltage is deliberately NOT substituted for motor
+% terminal/phase voltage. No figure is made when the motor voltage is absent.
+vm = evCmpCol(Clean, {'MotorTerminalVoltage','MotorVoltage','Vmotor','MotorVoltage_V'});
+vmRef = evCmpCol(Clean, {'MotorVoltageReference','MotorVoltageRef','VmotorRef'});
+if ~isempty(vm) && ~isempty(vmRef)
+    f = figure('Visible','off','Color','w','Position',[80 80 1100 650]);
+    plot(t,vmRef,'k--','LineWidth',1.4,'DisplayName','Motor voltage reference'); hold on;
+    plot(t,vm,'b','LineWidth',1.3,'DisplayName','Actual motor terminal voltage');
+    grid on; box on; xlabel('Time [s]'); ylabel('Voltage [V]');
+    title('Motor voltage comparison - actual vs reference','Interpreter','none');
+    legend('Location','best');
+    evCmpSave(f,fullfile(motorDir,'Motor_Voltage_Comparison.png')); made{end+1}='Motor_Voltage_Comparison.png';
+end
+
+% 5) Load comparison only when actual load and requested load are both logged.
+loadActual = evCmpCol(Clean, {'MotorLoadTorque','LoadTorque','ActualLoadTorque'});
+loadRef = evCmpCol(Clean, {'MotorLoadTorqueReference','LoadTorqueReference','LoadTorqueRef','LoadCommand'});
+if ~isempty(loadActual) && ~isempty(loadRef)
+    f = figure('Visible','off','Color','w','Position',[80 80 1100 650]);
+    plot(t,loadRef,'k--','LineWidth',1.4,'DisplayName','Load command/reference'); hold on;
+    plot(t,loadActual,'b','LineWidth',1.3,'DisplayName','Actual logged load torque');
+    grid on; box on; xlabel('Time [s]'); ylabel('Torque [N m]');
+    title('Motor load comparison - command vs actual','Interpreter','none');
+    legend('Location','best');
+    evCmpSave(f,fullfile(motorDir,'Motor_Load_Comparison.png')); made{end+1}='Motor_Load_Comparison.png';
+end
+
+% 6) DC-link voltage against its reference, if the reference channel exists.
+vdc = evCmpCol(Clean, {'DCLinkVoltage','Vdc','DC_Link_Voltage'});
+vdcRef = evCmpCol(Clean, {'DCLinkVoltageReference','VdcReference','VdcRef'});
+if ~isempty(vdc) && ~isempty(vdcRef)
+    f = figure('Visible','off','Color','w','Position',[80 80 1100 650]);
+    plot(t,vdcRef,'k--','LineWidth',1.4,'DisplayName','DC-link voltage reference'); hold on;
+    plot(t,vdc,'b','LineWidth',1.3,'DisplayName','Actual DC-link voltage');
+    grid on; box on; xlabel('Time [s]'); ylabel('Voltage [V]');
+    title('DC-link voltage comparison - actual vs reference','Interpreter','none');
+    legend('Location','best');
+    evCmpSave(f,fullfile(motorDir,'DC_Link_Voltage_Comparison.png')); made{end+1}='DC_Link_Voltage_Comparison.png';
+end
+
+% Write a text manifest into the existing run folder for transparency.
+% This is a run result, not a new source-code/helper file.
+fid = fopen(fullfile(motorDir,'Motor_Comparison_Graphs.txt'),'w');
+if fid >= 0
+    fprintf(fid,'Automatic motor comparison graph summary\\n');
+    fprintf(fid,'Run folder: %s\\n',runDir);
+    fprintf(fid,'Generated: %s\\n\\n',char(datetime('now')));
+    fprintf(fid,'Generated figures (%d):\\n',numel(made));
+    for q=1:numel(made), fprintf(fid,'  %s\\n',made{q}); end
+    fprintf(fid,'\\nSkipped comparisons require a logged reference/signal channel.\\n');
+    fprintf(fid,'This project currently identifies a battery model only; motor one-step/free-run predictions require a separate motor model.\\n');
+    fclose(fid);
+end
+fprintf('[DAQ]    Integrated comparison figures created: %d\\n',numel(made));
+end
+
+function x = evCmpCol(T, aliases)
+x = [];
+vn = T.Properties.VariableNames;
+for q=1:numel(aliases)
+    ii=find(strcmpi(vn,aliases{q}),1);
+    if ~isempty(ii)
+        v=T.(vn{ii});
+        if isnumeric(v) && isvector(v) && numel(v)==height(T)
+            x=double(v(:)); return
+        end
+    end
+end
+end
+
+function evCmpSave(f, filePath)
+try
+    exportgraphics(f,filePath,'Resolution',180);
+catch
+    saveas(f,filePath);
+end
+close(f);
 end
