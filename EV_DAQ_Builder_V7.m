@@ -253,6 +253,12 @@ if nargin >= 1 && (ischar(varargin{1}) || isstring(varargin{1}))
             evModelFixes(MDL, varargin{2});  return
         case 'runall'     % EV_DAQ_Builder_V7('RunAll'[,'Solver',true][,'Tune',true][,'Run',false])
             evRunAll(MDL, varargin{2:end});  return
+        case 'sensordiscovery'
+            % EV_DAQ_Builder_V7('SensorDiscovery')  read-only: list battery / buck / converter ports
+            % and sensor library paths. Does not add, connect, or save anything.
+            if ~bdIsLoaded(MDL), load_system(MDL); end
+            evBatterySensorDiscovery(MDL);
+            return
         case 'sysid'
             % EV_DAQ_Builder_V7('SysID')   run offline system identification (call after a simulation)
             try, root2 = evalin('base','EV_DAQ_Root'); catch, root2 = evFindRoot(MDL); end
@@ -4408,3 +4414,74 @@ fprintf('--- DAQ setup (builds + saves EV_BlackBox) %s ---\n', iif(p.Results.Run
 feval(mfilename, 'Run', p.Results.Run);
 end
 
+
+function evBatterySensorDiscovery(MDL)
+% Read-only inspection of battery, buck and converter ports, plus sensor library paths.
+% Does not alter, connect, or save the model.
+fprintf('\n=== EV BATTERY SENSOR PORT DISCOVERY ===\n');
+fprintf('Model: %s\n', MDL);
+fprintf('File: %s\n', get_param(MDL, 'FileName'));
+fprintf('Stop Time: %s s\n', get_param(MDL, 'StopTime'));
+
+allBlocks = find_system(MDL, 'SearchDepth', 1, 'Type', 'Block');
+for k = 1:numel(allBlocks)
+    try
+        nm = get_param(allBlocks{k}, 'Name');
+        if contains(lower(nm), 'battery') || contains(lower(nm), 'buck') || ...
+           contains(lower(nm), 'sensor') || contains(lower(nm), 'converter')
+            fprintf('\nBLOCK: %s\n', allBlocks{k});
+            fprintf('  BlockType: %s\n', get_param(allBlocks{k}, 'BlockType'));
+            % ReferenceBlock exists only on library-linked blocks (not SubSystems).
+            try
+                fprintf('  ReferenceBlock: %s\n', get_param(allBlocks{k}, 'ReferenceBlock'));
+            catch
+                fprintf('  ReferenceBlock: (none)\n');
+            end
+            ph = get_param(allBlocks{k}, 'PortHandles');
+            portGroups = {'LConn','RConn','Inport','Outport'};
+            for g = 1:numel(portGroups)
+                field = portGroups{g};
+                if ~isfield(ph, field), continue; end
+                for j = 1:numel(ph.(field))
+                    p = ph.(field)(j);
+                    fprintf('  %s(%d), handle=%g', field, j, p);
+                    try
+                        ln = get_param(p, 'Line');
+                        if isnumeric(ln) && ln > 0
+                            fprintf(', line=%g', ln);
+                        else
+                            fprintf(', unconnected');
+                        end
+                    catch
+                    end
+                    fprintf('\n');
+                end
+            end
+        end
+    catch ME
+        fprintf('Inspection warning: %s\n', ME.message);
+    end
+end
+
+fprintf('\n=== LIBRARY BLOCK SEARCH ===\n');
+libs = {'ee_lib', 'fl_lib', 'nesl_utility'};
+for k = 1:numel(libs)
+    try
+        load_system(libs{k});
+        fprintf('\nLibrary loaded: %s\n', libs{k});
+        candidates = find_system(libs{k}, 'LookUnderMasks', 'all', 'FollowLinks', 'on', 'Type', 'Block');
+        for j = 1:numel(candidates)
+            nm = get_param(candidates{j}, 'Name');
+            if contains(lower(nm), 'current sensor') || contains(lower(nm), 'voltage sensor') || ...
+               contains(lower(nm), 'ps-simulink converter')
+                fprintf('  %s\n', candidates{j});
+            end
+        end
+    catch ME
+        fprintf('Could not inspect %s: %s\n', libs{k}, ME.message);
+    end
+end
+
+fprintf('\n=== END OF READ-ONLY DISCOVERY ===\n');
+fprintf('No blocks were added, removed, connected, or saved.\n');
+end
