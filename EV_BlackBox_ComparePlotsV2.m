@@ -6,7 +6,7 @@ function R = EV_BlackBox_ComparePlotsV2(Clean, runDir)
 %   R = EV_BlackBox_ComparePlotsV2(Clean, runDir)
 %   R = EV_BlackBox_ComparePlotsV2([], "Simulation Logs/EV_RUN_...")
 %
-% Generates source-labelled figures under <runDir>/Figures_BlackBox_V2:
+% Generates source-labelled figures inside the existing <runDir>/Figures tree:
 %   Battery: simulation voltage/current/SOC/temperature/cell voltage if available
 %   Motor: reference vs actual RPM, motor current, torque, DC-link voltage
 %   SystemIdentification: battery voltage/current/SOC/temperature/cell-voltage signal traces,
@@ -45,9 +45,20 @@ assert(numel(t) == height(C) && numel(t) >= 3 && all(isfinite(t)), ...
     'EV_BBPlots:Time', 'Clean data needs a finite Time column.');
 assert(all(diff(t) > 0), 'EV_BBPlots:TimeOrder', 'Time must be strictly increasing.');
 
-outRoot = fullfile(runDir, 'Figures_BlackBox_V2');
-dirs = {fullfile(outRoot,'Battery'), fullfile(outRoot,'Motor'), ...
-        fullfile(outRoot,'SystemIdentification')};
+% Reuse the run's existing Figures/Battery and Figures/Motor folders.
+% Keep SysID validation plots in the existing Figures root; do not create a
+% separate Figures_BlackBox_V2 or SystemIdentification folder.
+legacyOutRoot = fullfile(runDir, 'Figures_BlackBox_V2');
+outRoot = fullfile(runDir, 'Figures');
+if isfolder(legacyOutRoot)
+    try
+        rmdir(legacyOutRoot, 's');  % remove the obsolete V2 output folder from older runs
+    catch ME_legacy
+        warning('EV_BBPlots:LegacyFolder', ...
+            'Could not remove old Figures_BlackBox_V2 folder: %s', ME_legacy.message);
+    end
+end
+dirs = {fullfile(outRoot,'Battery'), fullfile(outRoot,'Motor'), outRoot};
 for k = 1:numel(dirs)
     if ~isfolder(dirs{k}), mkdir(dirs{k}); end
 end
@@ -120,7 +131,7 @@ created = addSeriesPlot(C, t, dirs{2}, created, ...
     'DC-link voltage - Simulink plant', 'Voltage [V]');
 
 % System Identification channel coverage.
-% Plot all requested battery signals in this folder when they exist in the
+% These channel traces are saved in the existing Figures root when they exist in the
 % cleaned run data. For SOC, temperature and cell voltage these are measured/
 % simulated channel traces only unless a compatible identified output exists.
 created = addSeriesPlot(C, t, dirs{3}, created, ...
@@ -237,17 +248,6 @@ else
         'No EV_BlackBox_SysID.mat in %s. Simulation plots were created; SysID comparison plots skipped.', runDir);
 end
 
-% Machine-readable manifest: identifies the run and every generated output.
-fid = fopen(fullfile(outRoot,'PLOT_MANIFEST.txt'),'w');
-if fid >= 0
-    fprintf(fid,'EV Black-Box Comparison Plots V2\nRun folder: %s\n', runDir);
-    fprintf(fid,'Generated: %s\n', char(datetime('now')));
-    fprintf(fid,'SysID signal traces: battery voltage, current, SOC, temperature and cell voltage when present in cleaned data.\n');
-    fprintf(fid,'Current identified model predictions/residuals: battery voltage and current only. SOC/temperature/cell voltage traces are logged channels, not model predictions.\n');
-    fprintf(fid,'Motor RPM/current/torque are plant signals; this model does not predict them.\n\nFiles:\n');
-    for k = 1:numel(created), fprintf(fid,'%s\n',created{k}); end
-    fclose(fid);
-end
 R = struct('ok',true,'runDir',runDir,'outputDir',outRoot,'files',{created});
 fprintf('[EV_BBPlotsV2] Created %d plot/report files in:\n  %s\n',numel(created),outRoot);
 end
