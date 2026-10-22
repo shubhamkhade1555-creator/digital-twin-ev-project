@@ -4321,8 +4321,12 @@ for k = 1:size(specs,1)
     end
 end
 if isempty(done), return, end
+if logical(safeBase('EV_DAQ_DeferCompile', false))
+    for k = 1:numel(done), fprintf('[DAQ]   %s -> pack-level value; compile deferred until RunAll simulation start.\n', strrep(done{k},[MDL '/'],'')); end
+    return
+end
 try
-    set_param(MDL,'SimulationCommand','update');                    % compile check
+    set_param(MDL,'SimulationCommand','update');                    % compile check for stand-alone setup
     for k = 1:numel(done), fprintf('[DAQ]   %s -> pack-level value (compile check passed).\n', strrep(done{k},[MDL '/'],'')); end
 catch ME
     for k = 1:numel(done), try, set_param(done{k},'Gain',g0{k},'Multiplication',m0{k}); catch, end, end
@@ -4362,13 +4366,17 @@ switch step
                 set_param(blk,'snubber_type',old);
                 error('snubber_type NOT set (readback "%s", warning "%s"). Original restored.', got, wm);
             end
-            try
-                set_param(MDL,'SimulationCommand','update');            % compile check
-            catch ME
-                set_param(blk,'snubber_type',old);
-                error('Model does not compile with snubber_type = exclude, original restored: %s', ME.message);
+            if logical(safeBase('EV_DAQ_DeferCompile', false))
+                fprintf('snubber_type now   : %s (compile deferred until RunAll simulation start)\n', get_param(blk,'snubber_type'));
+            else
+                try
+                    set_param(MDL,'SimulationCommand','update');            % compile check for stand-alone fix
+                catch ME
+                    set_param(blk,'snubber_type',old);
+                    error('Model does not compile with snubber_type = exclude, original restored: %s', ME.message);
+                end
+                fprintf('snubber_type now   : %s (compile check passed)\n', get_param(blk,'snubber_type'));
             end
-            fprintf('snubber_type now   : %s (compile check passed)\n', get_param(blk,'snubber_type'));
         end
     case 2
         sc = [MDL '/Solver' newline 'Configuration'];
