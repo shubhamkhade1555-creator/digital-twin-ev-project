@@ -79,6 +79,7 @@ try
   out=three(tt,y(:,k),y1(:,k),yf(:,k),r,'N4SID_Battery',[nm{k} ' measured vs N4SID predictions'],sprintf('S%d_Compare',k),un{k},out);
   e=y(:,k)-yf(:,k);out=draw(tt,e,r,'N4SID_Battery',[nm{k} ' free-run residual'],['Residual (' un{k} ')'],sprintf('S%d_Residuals',k+2),out);
   out=parity(y(:,k),yf(:,k),r,'N4SID_Battery',[nm{k} ' validation parity'],sprintf('S%d_Parity',k+4),un{k},out);
+  out=inputCorr(e,S.Zv.InputData,r,'N4SID_Battery',[nm{k} ' residual-input correlation'],sprintf('S%d_Residual_Input_Correlation',k),out);
   if numel(e)>=10,[ac,lags]=xcorr(e-mean(e),min(40,floor(numel(e)/4)),'coeff');ff=figure('Visible','off','Color','w');aa=axes(ff);stem(aa,lags,ac,'filled');grid(aa,'on');xlabel(aa,'Lag (samples)');ylabel(aa,'Autocorrelation');title(aa,[nm{k} ' residual autocorrelation']);out=saveFig(ff,r,'N4SID_Battery',sprintf('S%d_Residual_Autocorrelation',k),out);end
  end
  if isfield(S,'sweep')&&size(S.sweep,2)>=8,sw=S.sweep;ff=figure('Visible','off','Color','w');aa=axes(ff);plot(aa,sw(:,1),sw(:,7),'o-','LineWidth',1.8);hold(aa,'on');plot(aa,sw(:,1),sw(:,8),'s-','LineWidth',1.8);grid(aa,'on');xlabel(aa,'State order');ylabel(aa,'Free-run RMSE');title(aa,'Battery N4SID model-order comparison');legend(aa,{'Voltage RMSE (V)','Current RMSE (A)'});out=saveFig(ff,r,'N4SID_Battery','S05_Model_Order',out);end
@@ -95,7 +96,7 @@ Un=(U-u0)./us;Yn=(Y-y0)./ys;Ze=iddata(Yn(1:Ne,:),Un(1:Ne,:),Ts);Zv=iddata(Yn(Ne+
 for nx=1:6,try,m=n4sid(Ze,nx,n4sidOptions('Focus','prediction','EstimateCovariance',false));[pp,~]=compare(Zv,m,1);yp=pp.OutputData.*ys+y0;er=Y(Ne+1:end,:)-yp;rm=sqrt(mean(er.^2,1));sw(nx,:)=[nx rm];sc=mean(rm./max(ys,1e-9));if isstable(m)&&isfinite(sc)&&sc<bestScore,best=m;bestScore=sc;ord=nx;end;catch,end,end
 if isempty(best),out.warnings{end+1}='Motor N4SID: no stable candidate model';return,end
 [p1,fit1]=compare(Zv,best,1);[pf,fitf]=compare(Zv,best,Inf);yt=Zv.OutputData.*ys+y0;a=p1.OutputData.*ys+y0;bb=pf.OutputData.*ys+y0;tv=tt(Ne+1:end);nm={'Motor RPM','Motor current','Motor torque'};un={'rpm','A','N m'};short={'RPM','Current','Torque'};
-for k=1:3,out=three(tv,yt(:,k),a(:,k),bb(:,k),r,'N4SID_Motor',[nm{k} ' measured vs N4SID predictions'],sprintf('S%d_%s_Compare',10+k,short{k}),un{k},out);out=draw(tv,yt(:,k)-bb(:,k),r,'N4SID_Motor',[nm{k} ' free-run residual'],['Residual (' un{k} ')'],sprintf('S%d_%s_Residual',13+k,short{k}),out);out=parity(yt(:,k),bb(:,k),r,'N4SID_Motor',[nm{k} ' validation parity'],sprintf('S%d_%s_Parity',16+k,short{k}),un{k},out);end
+for k=1:3,out=three(tv,yt(:,k),a(:,k),bb(:,k),r,'N4SID_Motor',[nm{k} ' measured vs N4SID predictions'],sprintf('S%d_%s_Compare',10+k,short{k}),un{k},out);er=yt(:,k)-bb(:,k);out=draw(tv,er,r,'N4SID_Motor',[nm{k} ' free-run residual'],['Residual (' un{k} ')'],sprintf('S%d_%s_Residual',13+k,short{k}),out);out=parity(yt(:,k),bb(:,k),r,'N4SID_Motor',[nm{k} ' validation parity'],sprintf('S%d_%s_Parity',16+k,short{k}),un{k},out);out=inputCorr(er,Zv.InputData,r,'N4SID_Motor',[nm{k} ' residual-input correlation'],sprintf('S%d_%s_Residual_Input_Correlation',19+k,short{k}),out);end
 ff=figure('Visible','off','Color','w');aa=axes(ff);plot(aa,sw(:,1),sw(:,2),'o-');hold(aa,'on');plot(aa,sw(:,1),sw(:,3),'s-');plot(aa,sw(:,1),sw(:,4),'^-');grid(aa,'on');xlabel(aa,'State order');ylabel(aa,'Validation RMSE');title(aa,'Motor N4SID model-order comparison');legend(aa,{'RPM','Current','Torque'});out=saveFig(ff,r,'N4SID_Motor','S17_Model_Order',out);
 try,save(fullfile(runDir,'EV_Motor_N4SID.mat'),'best','ord','u0','us','y0','ys','Ze','Zv','fit1','fitf','sw');catch,end
 fprintf('[EV_Graphs] Motor N4SID order=%d; one-step fit=%s; free-run fit=%s\n',ord,mat2str(fit1,3),mat2str(fitf,3));
@@ -106,6 +107,16 @@ end
 function out=parity(y,yp,r,g,ttl,nm,unit,out)
 n=min(numel(y),numel(yp));y=y(1:n);yp=yp(1:n);q=isfinite(y)&isfinite(yp);y=y(q);yp=yp(q);if numel(y)<2,out.warnings{end+1}=[nm ': too few samples'];return,end;lo=min([y;yp]);hi=max([y;yp]);if hi<=lo,hi=lo+1;end
 f=figure('Visible','off','Color','w');ax=axes(f);scatter(ax,y,yp,22,'filled');hold(ax,'on');plot(ax,[lo hi],[lo hi],'k--');grid(ax,'on');axis(ax,'square');xlabel(ax,['Measured (' unit ')']);ylabel(ax,['Predicted (' unit ')']);title(ax,ttl);out=saveFig(f,r,g,nm,out);
+end
+function out=inputCorr(e,U,r,g,ttl,nm,out)
+e=e(:);n=min(size(U,1),numel(e));e=e(1:n);U=U(1:n,:);ok=isfinite(e)&all(isfinite(U),2);e=e(ok);U=U(ok,:);
+if numel(e)<10,out.warnings{end+1}=[nm ': too few samples'];return,end
+lag=min(30,floor(numel(e)/4));f=figure('Visible','off','Color','w','Position',[100 100 1300 760]);a=axes(f);hold(a,'on');
+for q=1:size(U,2)
+ u=U(:,q)-mean(U(:,q));ee=e-mean(e);[c,l]=xcorr(u,ee,lag,'coeff');plot(a,l,c,'LineWidth',1.4,'DisplayName',sprintf('Input %d',q));
+end
+bound=1.96/sqrt(numel(e));yline(a,bound,'k--');yline(a,-bound,'k--');grid(a,'on');xlabel(a,'Lag (samples)');ylabel(a,'Cross-correlation');title(a,ttl,'FontWeight','bold');legend(a,'Location','best');
+out=saveFig(f,r,g,nm,out);
 end
 function out=saveFig(f,r,g,nm,out)
 d=fullfile(r,g);if ~isfolder(d),mkdir(d);end;try,p=fullfile(d,[nm '.png']);exportgraphics(f,p,'Resolution',300);out.files{end+1}=p;catch ME,out.warnings{end+1}=[nm ': PNG export failed ' ME.message];end;try,p=fullfile(d,[nm '.pdf']);exportgraphics(f,p,'ContentType','vector');out.files{end+1}=p;catch,end;close(f);
