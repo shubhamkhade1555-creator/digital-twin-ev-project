@@ -483,6 +483,22 @@ else
     end
 end
 
+%% ---- 10b. unique motor / powertrain comparison plots (automatic on every RunAll) -----------------
+% Battery validation comparisons are already produced by the existing reference/SysID pipeline.
+% This call adds available motor RPM/current/voltage/torque/load and DC-link comparisons.
+% The utility skips missing references and does not invent motor black-box predictions.
+if ~logical(rav('EV_DAQ_Fast', false)) && ~logical(rav('EV_Ref_Skip', false))
+    try
+        optsGraphs = struct('OutputDir', fullfile(result.runDir, 'Figures', 'Comparisons'), ...
+                            'ShowFigures', false, 'TimeRange', []);
+        EV_MakeComparisonGraphs(C, [], optsGraphs);
+        R = rarec(R, say, 'PASS', 'Motor comparison graphs', ...
+            fullfile(result.runDir, 'Figures', 'Comparisons'));
+    catch ME_graphs
+        R = rarec(R, say, 'WARN', 'Motor comparison graphs', ME_graphs.message);
+    end
+end
+
 result = rafinish(result, R, say, root, stamp, toc(tAll));
 end
 
