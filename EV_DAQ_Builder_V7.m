@@ -1941,12 +1941,12 @@ end
 % The Simulink StopFcn runs this block for both toolbar Run and RunAll.
 if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))
     try
-        fprintf('[DAQ] 14d. Integrated motor/powertrain comparisons ...\\n');
+        fprintf('[DAQ] 14d. Integrated motor/powertrain comparisons ...\n');
         evAutoComparisonGraphs(Clean, runDir, P);
         LG('14d/14 Integrated motor/powertrain comparison graphs complete');
     catch ME_cmp
         LG(sprintf('14d/14 Motor comparison graphs skipped: %s', ME_cmp.message));
-        fprintf('[DAQ]    Motor comparison graphs skipped (non-fatal): %s\\n', ME_cmp.message);
+        fprintf('[DAQ]    Motor comparison graphs skipped (non-fatal): %s\n', ME_cmp.message);
     end
 end
 
@@ -4422,8 +4422,15 @@ if ~isempty(im)
         yline(-P.I_cont,'b--','LineWidth',1.2,'HandleVisibility','off');
     end
     if isfield(P,'I_peak') && isfinite(P.I_peak)
-        yline(P.I_peak,'r:','LineWidth',1.2,'DisplayName',sprintf('Peak limit %.1f A',P.I_peak));
-        yline(-P.I_peak,'r:','LineWidth',1.2,'HandleVisibility','off');
+        peakLimit = P.I_peak;
+    elseif isfield(P,'I_peak_VV') && isfinite(P.I_peak_VV)
+        peakLimit = P.I_peak_VV;
+    else
+        peakLimit = [];
+    end
+    if ~isempty(peakLimit)
+        yline(peakLimit,'r:','LineWidth',1.2,'DisplayName',sprintf('Peak limit %.1f A',peakLimit));
+        yline(-peakLimit,'r:','LineWidth',1.2,'HandleVisibility','off');
     end
     grid on; box on; xlabel('Time [s]'); ylabel('Current [A]');
     title('Motor current comparison - measured signal vs current limits','Interpreter','none');
@@ -4485,20 +4492,7 @@ if ~isempty(vdc) && ~isempty(vdcRef)
     evCmpSave(f,fullfile(motorDir,'DC_Link_Voltage_Comparison.png')); made{end+1}='DC_Link_Voltage_Comparison.png';
 end
 
-% Write a text manifest into the existing run folder for transparency.
-% This is a run result, not a new source-code/helper file.
-fid = fopen(fullfile(motorDir,'Motor_Comparison_Graphs.txt'),'w');
-if fid >= 0
-    fprintf(fid,'Automatic motor comparison graph summary\\n');
-    fprintf(fid,'Run folder: %s\\n',runDir);
-    fprintf(fid,'Generated: %s\\n\\n',char(datetime('now')));
-    fprintf(fid,'Generated figures (%d):\\n',numel(made));
-    for q=1:numel(made), fprintf(fid,'  %s\\n',made{q}); end
-    fprintf(fid,'\\nSkipped comparisons require a logged reference/signal channel.\\n');
-    fprintf(fid,'This project currently identifies a battery model only; motor one-step/free-run predictions require a separate motor model.\\n');
-    fclose(fid);
-end
-fprintf('[DAQ]    Integrated comparison figures created: %d\\n',numel(made));
+fprintf('[DAQ]    Integrated comparison figures created: %d\n',numel(made));
 end
 
 function x = evCmpCol(T, aliases)
