@@ -74,7 +74,7 @@ say('[RunAll]    Log file: %s', logFile);
 %% ---- 2. required files ------------------------------------------------------------------------
 say('[RunAll] 2. Checking files ...');
 need = {[MDL '.slx'], true;  'BLDCSpeedControlData.m', true;  'BLDCSpeedControlInput.mat', true; ...
-        'Batteries2_lib.slx', true;  [BUILDER '.m'], true;  'Batteries2.slx', false};
+        'Batteries2_lib.slx', true;  [BUILDER '.m'], true;  'EV_Graphs.m', true;  'Batteries2.slx', false};
 missingReq = {};
 for k = 1:size(need, 1)
     ok = isfile(fullfile(root, need{k, 1}));
@@ -451,40 +451,24 @@ else
     R = rarec(R, say, 'WARN', 'SysID Validation', 'EV_BlackBox_SysID.mat not found');
 end
 
-%% ---- 9b + 10. numbered clean data, comparison graphs, reference Excel (EV_MakeReference) ---------------------
-% EV_MakeReference runs inside the Simulink StopFcn chain (EV_DAQ_Builder_V7 step 14c), so a plain Run in Simulink saves
-% the same files. RunAll waits for it and only calls it itself if the hook did not run.
-say('[RunAll] 10. Clean data + comparison graphs (EV_MakeReference, inside the run folder) ...');
+%% ---- 10. Unified graph generation (also invoked by the Simulink StopFcn) ---------------------
+say('[RunAll] 10. Unified Battery/Motor/N4SID graphs ...');
 if logical(rav('EV_DAQ_Fast', false)) || logical(rav('EV_Ref_Skip', false))
-    say('[RunAll]    Fast mode / EV_Ref_Skip: clean-data copy, graphs and reference Excel skipped.');
+ say('[RunAll] Fast mode / EV_Ref_Skip: graph generation skipped.');
 else
-    try
-        if isempty(result.runDir) || ~isfolder(result.runDir)
-            error('RunAll:noRunDir', 'run folder not found - graphs skipped');
-        end
-        tp = tic;
-        while toc(tp) < 180
-            if rahas('EV_MakeRef_Name'), break, end
-            busy = rahas('EV_MakeRef_Busy') && logical(rav('EV_MakeRef_Busy', false));
-            if ~busy && toc(tp) > 15, break, end
-            pause(1);
-        end
-        if rahas('EV_MakeRef_Name')
-            fname = evalin('base', 'EV_MakeRef_Name');
-        else
-            say('[RunAll]    Simulink hook did not run (old EV_DAQ_Builder_V7.m?) - calling EV_MakeReference here.');
-            EV_MakeReference(C, [], [], result.runDir);
-            fname = evalin('base', 'EV_MakeRef_Name');
-        end
-        [~, rn] = fileparts(result.runDir);
-        R = rarec(R, say, 'PASS', 'Clean data + graphs', [fullfile('Simulation Logs', rn, 'Figures') '  (' fname ')']);
-    catch ME
-        R = rarec(R, say, 'WARN', 'Clean data + graphs', ME.message);
-    end
+ try
+  graphDone=false;
+  if rahas('EV_Graphs_Result')
+   gr=evalin('base','EV_Graphs_Result');
+   graphDone=isstruct(gr)&&isfield(gr,'runDir')&&strcmp(char(gr.runDir),char(result.runDir))&&isfield(gr,'status')&&strcmp(gr.status,'complete');
+  end
+  if ~graphDone
+   if isempty(result.runDir)||~isfolder(result.runDir),error('RunAll:GraphRunDir','Current run folder unavailable.');end
+   EV_Graphs('generate',C,result.runDir,struct());
+  else,say('[RunAll] StopFcn already generated graphs; duplicate generation avoided.');end
+  say('[RunAll] Graph folder: %s',fullfile(result.runDir,'Figures'));
+ catch ME_graph,R=rarec(R,say,'WARN','Unified graph generation',ME_graph.message);end
 end
-
-% Comparison plots are generated once by EV_DAQ_Builder_V7's StopFcn (step 14d).
-% This keeps manual Simulink Run and RunAll behaviour identical without duplicate plotting calls.
 
 result = rafinish(result, R, say, root, stamp, toc(tAll));
 end
