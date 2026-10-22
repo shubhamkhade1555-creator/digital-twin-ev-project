@@ -108,5 +108,5 @@ n=min(numel(y),numel(yp));y=y(1:n);yp=yp(1:n);q=isfinite(y)&isfinite(yp);y=y(q);
 f=figure('Visible','off','Color','w');ax=axes(f);scatter(ax,y,yp,22,'filled');hold(ax,'on');plot(ax,[lo hi],[lo hi],'k--');grid(ax,'on');axis(ax,'square');xlabel(ax,['Measured (' unit ')']);ylabel(ax,['Predicted (' unit ')']);title(ax,ttl);out=saveFig(f,r,g,nm,out);
 end
 function out=saveFig(f,r,g,nm,out)
-d=fullfile(r,'Figures',g);if ~isfolder(d),mkdir(d);end;try,p=fullfile(d,[nm '.png']);exportgraphics(f,p,'Resolution',300);out.files{end+1}=p;catch ME,out.warnings{end+1}=[nm ': PNG export failed ' ME.message];end;try,p=fullfile(d,[nm '.pdf']);exportgraphics(f,p,'ContentType','vector');out.files{end+1}=p;catch,end;close(f);
+d=fullfile(r,g);if ~isfolder(d),mkdir(d);end;try,p=fullfile(d,[nm '.png']);exportgraphics(f,p,'Resolution',300);out.files{end+1}=p;catch ME,out.warnings{end+1}=[nm ': PNG export failed ' ME.message];end;try,p=fullfile(d,[nm '.pdf']);exportgraphics(f,p,'ContentType','vector');out.files{end+1}=p;catch,end;close(f);
 end
