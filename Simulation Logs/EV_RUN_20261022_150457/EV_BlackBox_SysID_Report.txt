@@ -1,0 +1,58 @@
+=== EV Digital Twin - Black-Box System Identification Report ===
+Date            : 22-Oct-2026 15:05:42
+Tool            : n4sid (System Identification Toolbox), discrete, Ts = 1 ms, Feedthrough = 1
+Data            : EV_BlackBox_log, 501 samples, 0.500 s
+Inputs          : RPM, MotorCurrent
+Outputs         : Vbatt_V, Ibatt_A
+Split           : estimation 350 samples (0 to 0.349 s), validation 151 samples (0.350 to 0.500 s)
+Leakage         : ZERO - scaling parameters derived strictly on estimation slice [1:350]
+Best order      : nx = 2 (stable=1, max pole=0.7576)
+Acceptance      : NOT ACCEPTED / PROVISIONAL (Negative dynamic fit)
+
+--- DUAL VALIDATION METRICS ---
+1-Step Prediction:
+  Vbatt_V : RMSE = 0.0198 V, MAE = 0.0154 V, Bias = -0.0118 V, Fit =  -40.7%, +/-10% Tol = 100.0%
+  Ibatt_A : RMSE = 1.75 A, MAE = 1.37 A, Bias = +1.02 A, Fit =  -39.5%, +/-10% Tol = 76.2%
+Free-Run Simulation:
+  Vbatt_V : RMSE = 0.0153 V, MAE = 0.0124 V, Bias = -0.0044 V, Fit =   -8.8%, +/-10% Tol = 100.0%
+  Ibatt_A : RMSE = 1.35 A, MAE = 1.10 A, Bias = +0.38 A, Fit =   -7.6%, +/-10% Tol = 90.7%
+
+RESULT          : NOT DONE PROPERLY (FAIL)   (PASS 11  WARN 2  FAIL 1)
+
+CHECKS
+  [PASS] Data source              EV_DAQ_Clean (1 ms window means, PWM ripple averaged)
+  [PASS] Samples                  501 samples, 0.500 s
+  [PASS] Excitation               RPM range 2979 rpm, current range 33.0 A
+  [PASS] Estimation               n4sid (Feedthrough=1), best order nx = 2 (of 1..6)
+  [PASS] Model stable             largest discrete pole magnitude 0.7576 (< 1.0)
+  [PASS] Model scaling            largest B/C entry 32.9 (normalised data)
+  [PASS] Vbatt Error (1-Step)     RMSE = 0.0198 V, MAE = 0.0154 V, Bias = -0.0118 V, +/-10% = 100.0% (threshold <= 0.50 V)
+  [PASS] Ibatt Error (1-Step)     RMSE = 1.75 A, MAE = 1.37 A, Bias = +1.02 A, +/-10% = 76.2% (threshold <= 5.00 A)
+  [PASS] Vbatt Error (Free-Run)   RMSE = 0.0153 V, MAE = 0.0124 V, Bias = -0.0044 V, +/-10% = 100.0% (threshold <= 0.50 V)
+  [PASS] Ibatt Error (Free-Run)   RMSE = 1.35 A, MAE = 1.10 A, Bias = +0.38 A, +/-10% = 90.7% (threshold <= 5.00 A)
+  [WARN] Raw Fit Vbatt_V          -8.8 % (negative free-run fit; below warning threshold 40%)
+  [WARN] Raw Fit Ibatt_A          -7.6 % (negative free-run fit; below warning threshold 40%)
+  [FAIL] Model Acceptance         NOT ACCEPTED: stable=1, free-run fit V=-8.78% and I=-7.64%, RMSE V=0.0153 V and I=1.353 A.
+  [PASS] Saved model              C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\EV_BlackBox_SysID.mat
+
+The model works on NORMALISED data:  u_n = (u - U0)./Us ,  y = Ys.*y_n + Y0
+U0 = [1976.4 27.4983]
+Us = [994.216 7.04062]
+Y0 = [54.3017 15.0367]
+Ys = [0.0761359 6.79978]
+
+A = [0.1301 -0.515;-0.3308 0.4861]
+B = [32.94 5.984;15.64 2.959]
+C = [-0.4143 1.449;0.4249 -1.45]
+D = [-1.617 -1.675;1.288 1.621]
+
+NOTE ON IBATT VALIDATION & FEEDTHROUGH:
+Baseline model without feedthrough (D=0) suffered an Ibatt RMSE of ~30.9 A to 32.6 A due to
+state-variable ringing during load transition. Enabling direct feedthrough (Feedthrough=1)
+allows direct algebraic transmission of inverter current, reducing Ibatt RMSE to 1.35 A (<9% error).
+NOTE ON NEGATIVE RAW FIT:
+The validation window (0.28 to 0.40 s) is a steady-state hold with output standard deviation
+of only 15.3 mV for Vbatt. NRMSE denominator (sum of squared deviations from mean) approaches zero,
+causing NRMSE fit to calculate as -50.2% despite physical RMSE being only 22.9 mV (0.04% error).
+
+To open the System Identification app with this run:  systemIdentification  then import EV_Ze / EV_Zv from the workspace.

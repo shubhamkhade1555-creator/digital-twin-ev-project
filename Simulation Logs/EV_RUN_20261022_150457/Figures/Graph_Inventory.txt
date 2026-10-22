@@ -1,0 +1,88 @@
+EV Digital Twin graph inventory
+22-Oct-2026 15:08:19
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B01_Battery_Voltage.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B01_Battery_Voltage.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B02_Battery_Current.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B02_Battery_Current.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B03_Battery_SOC.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B03_Battery_SOC.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B06_Battery_Power.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B06_Battery_Power.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B07_Battery_Monitoring.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Battery\B07_Battery_Monitoring.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M01_RPM_Tracking.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M01_RPM_Tracking.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M02_Motor_Current.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M02_Motor_Current.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M02b_Motor_Current_Limits.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M02b_Motor_Current_Limits.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M03_Motor_Torque.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M03_Motor_Torque.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M04_DC_Link_Voltage.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M04_DC_Link_Voltage.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M10_Motor_Mechanical_Power.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\Motor\M10_Motor_Mechanical_Power.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S1_Compare.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S1_Compare.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S3_Residuals.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S3_Residuals.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S5_Parity.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S5_Parity.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S1_Residual_Input_Correlation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S1_Residual_Input_Correlation.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S1_Residual_Autocorrelation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S1_Residual_Autocorrelation.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S2_Compare.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S2_Compare.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S4_Residuals.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S4_Residuals.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S6_Parity.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S6_Parity.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S2_Residual_Input_Correlation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S2_Residual_Input_Correlation.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S2_Residual_Autocorrelation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S2_Residual_Autocorrelation.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S05_Model_Order.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S05_Model_Order.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S06_Validation_Fit.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Battery\S06_Validation_Fit.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S11_RPM_Compare.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S11_RPM_Compare.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S14_RPM_Residual.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S14_RPM_Residual.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S17_RPM_Parity.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S17_RPM_Parity.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S20_RPM_Residual_Input_Correlation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S20_RPM_Residual_Input_Correlation.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S12_Current_Compare.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S12_Current_Compare.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S15_Current_Residual.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S15_Current_Residual.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S18_Current_Parity.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S18_Current_Parity.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S21_Current_Residual_Input_Correlation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S21_Current_Residual_Input_Correlation.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S13_Torque_Compare.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S13_Torque_Compare.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S16_Torque_Residual.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S16_Torque_Residual.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S19_Torque_Parity.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S19_Torque_Parity.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S22_Torque_Residual_Input_Correlation.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S22_Torque_Residual_Input_Correlation.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S17_Model_Order.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S17_Model_Order.pdf
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S18_Validation_Fit.png
+C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_150457\Figures\N4SID_Motor\S18_Validation_Fit.pdf
+
+Skipped/unavailable:
+- B04_Battery_Temperature: signal unavailable
+- B08_Battery_Temperature_Max: signal unavailable
+- Cell voltage: no cell-level columns logged
+- M12_Motor_Temperature: signal unavailable
+- M05_Motor_Terminal_Voltage: signal unavailable
+- M06_Phase_A: signal unavailable
+- M07_Phase_B: signal unavailable
+- M08_Phase_C: signal unavailable
+- M09_Line_Voltage_AB: signal unavailable
+- Motor torque/load comparison: load torque reference not logged

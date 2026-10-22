@@ -1,0 +1,10 @@
+PartNumber,FileName,StartTime,EndTime,Rows,Columns,FileSizeBytes
+1,02b_Raw_PerCell_Compact_Part001.csv,0,0.05905,5906,150,19145763
+2,02b_Raw_PerCell_Compact_Part002.csv,0.05906,0.11811,5906,150,18580019
+3,02b_Raw_PerCell_Compact_Part003.csv,0.11812,0.17717,5906,150,18014541
+4,02b_Raw_PerCell_Compact_Part004.csv,0.17718,0.23623,5906,150,17574037
+5,02b_Raw_PerCell_Compact_Part005.csv,0.23624,0.29529,5906,150,17643348
+6,02b_Raw_PerCell_Compact_Part006.csv,0.2953,0.35435,5906,150,17264064
+7,02b_Raw_PerCell_Compact_Part007.csv,0.35436,0.41341,5906,150,17279321
+8,02b_Raw_PerCell_Compact_Part008.csv,0.41342,0.47247,5906,150,17278214
+9,02b_Raw_PerCell_Compact_Part009.csv,0.47248,0.5,2753,150,8057530

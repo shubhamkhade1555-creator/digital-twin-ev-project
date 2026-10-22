@@ -1,0 +1,113 @@
+
+==============================================================
+  EV DIGITAL TWIN - RunAll   22-Oct-2026 05:38:59
+==============================================================
+[RunAll] 1. Project folder (auto-detected): C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin
+[RunAll]    MATLAB path set (project + sub-folders, run archives excluded).
+[RunAll]    Log file: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\RunAll_20261022_053859.txt
+[RunAll] 2. Checking files ...
+[RunAll]    FOUND              BLDCSpeedControl_EV_Layout_v2.slx
+[RunAll]    FOUND              BLDCSpeedControlData.m
+[RunAll]    FOUND              BLDCSpeedControlInput.mat
+[RunAll]    FOUND              Batteries2_lib.slx
+[RunAll]    FOUND              EV_DAQ_Builder_V7.m
+[RunAll]    FOUND              Batteries2.slx
+[RunAll]    [PASS] Required files                         all found
+[RunAll] 3. Checking MATLAB ...
+[RunAll]    MATLAB 2024b on PCWIN64
+[RunAll]    [WARN] MATLAB release                         2024b (project was built in R2024b - the model may not open in an older release)
+[RunAll]    product ok      : Simulink
+[RunAll]    product ok      : Simscape
+[RunAll]    product ok      : Simscape Electrical
+[RunAll]    product ok      : Simscape Battery
+[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...
+[RunAll]    Mode: FULL VALIDATION (t_stop = 0.4 s >= 0.350 s minimum required)
+[RunAll]    [PASS] Validation Duration                    0.400 s (meets full validation requirement)
+[RunAll]    rpm_ref=2950 rpm  I_cont=30 A  I_peak=45 A  Kt=0.107 N*m/A  t_stop=0.4 s  pack=50 Ah
+[RunAll]    Ts = 1e-05 s (project setting: 1e-5 s = 2x faster, verified 15 PASS / 4 WARN / 0 FAIL)
+[RunAll] 5. Loading models ...
+[RunAll]    loaded saved model BLDCSpeedControl_EV_Layout_v2.
+[RunAll] 6a. Model fix: buck snubber -> exclude ...
+[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...
+[RunAll] 6c. Ensure battery voltage/current measurement Scopes ...
+[RunAll]    [PASS] DAQ setup                              model loaded, Black Box built, hooks written, model saved
+[RunAll]    Stop Time of the model for this run: 0.3 s
+[RunAll] 7. Separate compile check skipped (the simulation start compiles the model once; use RunAll('Compile',true) to force it).
+[RunAll] 8. Starting simulation (t_stop = 0.3 s). [LIVE] lines follow ...
+--------------------------------------------------------------
+[RunAll]    ... running, simulation time 0.000 / 0.3 s, wall time 8 s
+[RunAll]    ... running, simulation time 0.010 / 0.3 s, wall time 13 s
+[RunAll]    ... running, simulation time 0.022 / 0.3 s, wall time 18 s
+[RunAll]    ... running, simulation time 0.036 / 0.3 s, wall time 24 s
+[RunAll]    ... running, simulation time 0.046 / 0.3 s, wall time 29 s
+[RunAll]    ... running, simulation time 0.059 / 0.3 s, wall time 34 s
+[RunAll]    ... running, simulation time 0.071 / 0.3 s, wall time 40 s
+[RunAll]    ... running, simulation time 0.082 / 0.3 s, wall time 45 s
+[RunAll]    ... running, simulation time 0.093 / 0.3 s, wall time 50 s
+[RunAll]    ... running, simulation time 0.105 / 0.3 s, wall time 55 s
+[RunAll]    ... running, simulation time 0.115 / 0.3 s, wall time 60 s
+[RunAll]    ... running, simulation time 0.123 / 0.3 s, wall time 65 s
+[RunAll]    ... running, simulation time 0.133 / 0.3 s, wall time 71 s
+[RunAll]    ... running, simulation time 0.138 / 0.3 s, wall time 76 s
+[RunAll]    ... running, simulation time 0.143 / 0.3 s, wall time 81 s
+[RunAll]    ... running, simulation time 0.152 / 0.3 s, wall time 86 s
+[RunAll]    ... running, simulation time 0.161 / 0.3 s, wall time 91 s
+[RunAll]    ... running, simulation time 0.168 / 0.3 s, wall time 96 s
+[RunAll]    ... running, simulation time 0.175 / 0.3 s, wall time 101 s
+[RunAll]    ... running, simulation time 0.181 / 0.3 s, wall time 106 s
+[RunAll]    ... running, simulation time 0.188 / 0.3 s, wall time 112 s
+[RunAll]    ... running, simulation time 0.199 / 0.3 s, wall time 117 s
+[RunAll]    ... running, simulation time 0.209 / 0.3 s, wall time 122 s
+[RunAll]    ... running, simulation time 0.221 / 0.3 s, wall time 127 s
+[RunAll]    ... running, simulation time 0.230 / 0.3 s, wall time 132 s
+[RunAll]    ... running, simulation time 0.240 / 0.3 s, wall time 137 s
+[RunAll]    ... running, simulation time 0.249 / 0.3 s, wall time 142 s
+[RunAll]    ... running, simulation time 0.251 / 0.3 s, wall time 148 s
+[RunAll]    ... running, simulation time 0.256 / 0.3 s, wall time 153 s
+[RunAll]    ... running, simulation time 0.261 / 0.3 s, wall time 158 s
+[RunAll]    ... running, simulation time 0.266 / 0.3 s, wall time 163 s
+[RunAll]    ... running, simulation time 0.271 / 0.3 s, wall time 168 s
+[RunAll]    ... running, simulation time 0.277 / 0.3 s, wall time 173 s
+[RunAll]    ... running, simulation time 0.283 / 0.3 s, wall time 179 s
+[RunAll]    ... running, simulation time 0.290 / 0.3 s, wall time 184 s
+[RunAll]    ... running, simulation time 0.296 / 0.3 s, wall time 189 s
+--------------------------------------------------------------
+[RunAll]    simulation finished after 306 s wall time.
+[RunAll]    [PASS] Simulation run                         finished in 306 s
+[RunAll]    data archive: C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_054546
+[RunAll] 9. Verifying the result ...
+[RunAll]    [PASS] Black Box size                         301 x 8 (expected 301 or 302 x 8, 1 ms)
+[RunAll]    [PASS] Black Box NaN                          0 NaN values
+[RunAll]    [PASS] Reached t_stop                         last time = 0.3000 s
+[RunAll]    [PASS] Initial state                          SOC=1.00000  rpm=0.0  Vbatt=54.47 V
+[RunAll]    [PASS] Final speed (2900-3000 rpm)            2942.2 rpm (target 2950)
+[RunAll]    [PASS] Torque per amp (Kt)                    0.1052 N*m/A (datasheet 0.107, +/-5%)
+[RunAll]    [PASS] Peak motor current                     max 33.0 A (I_peak 45 A)
+[RunAll]    [WARN] Motor current vs I_cont                mean of last 20 ms = 31.5 A (I_cont 30 A; run is short, load only reached 3.18 Nm at 0.28 s)
+[RunAll]    [PASS] SOC vs coulomb count                   SOC drop 2.29e-05, expected 2.20e-05 (ratio 1.04)
+[RunAll]    [PASS] BlackBox vs archive: motor current     -0.12 %
+[RunAll]    [PASS] BlackBox vs archive: battery voltage   -0.038 V
+[RunAll]    [PASS] BlackBox vs archive: RPM               -0.001 %
+[RunAll]    [PASS] BlackBox vs archive: battery current   -1.9 %  (BB 23.94 A, archive 24.39 A; ripple std BB 1.33 A, archive 1.40 A)
+[RunAll]    [WARN] Power balance (Black Box)              Pdc/Pbatt = 1.062 (expected 0.85-1.02)
+[RunAll]    [WARN] Power balance (archive)                Pdc/Pbatt = 1.044 (expected 0.85-1.02)
+[RunAll] 9c. Auditing Black-Box SysID model and validation data ...
+[RunAll]    SysID 1-Step Validation  : Vbatt RMSE=0.2079 V, MAE=0.1528 V | Ibatt RMSE=18.58 A, MAE=13.65 A
+[RunAll]    SysID Free-Run Simulation: Vbatt RMSE=0.0666 V, MAE=0.0492 V | Ibatt RMSE=5.91 A, MAE=4.36 A
+[RunAll]    Raw NRMSE Fit (1-Step)   : Vbatt=-126.7%, Ibatt=-126.7%
+[RunAll]    Raw NRMSE Fit (Free-Run) : Vbatt=  27.3%, Ibatt=  27.9%
+[RunAll]    Samples in +/-10% Tol   : Vbatt=100.0%, Ibatt=39.6% (Free-Run)
+[RunAll]    [PASS] SysID Voltage Error (1-Step)           RMSE = 0.2079 V, MAE = 0.1528 V, Bias = +0.1386 V, Fit = -126.7%, +/-10% tol = 100.0%
+[RunAll]    [PASS] SysID Voltage Error (Free-Run)         RMSE = 0.0666 V, MAE = 0.0492 V, Bias = +0.0437 V, Fit =   27.3%, +/-10% tol = 100.0%
+[RunAll]    [FAIL] SysID Current Error (1-Step)           RMSE = 18.5785 A, MAE = 13.6537 A, Bias = -12.3891 A, Fit = -126.7%, +/-10% tol = 24.2%
+[RunAll]    [FAIL] SysID Current Error (Free-Run)         RMSE = 5.9085 A, MAE = 4.3618 A, Bias = -3.8755 A, Fit =   27.9%, +/-10% tol = 39.6%
+[RunAll]    [PASS] SysID Model Stability                  Max pole magnitude = 0.8823 (< 1.0 required)
+[RunAll] 10. Checking Black-Box Comparison Plots V2 ...
+[RunAll]    [PASS] Black-Box comparison plots V2          C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_054546\Figures_BlackBox_V2
+
+==============================================================
+  SUMMARY   PASS 20   WARN 4   FAIL 2     (516 s)
+  RESULT: 2 CHECK(S) FAILED - read the FAIL lines above
+  Data archive : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\Simulation Logs\EV_RUN_20261022_054546
+  RunAll log   : C:\Users\shubh\OneDrive\Documents\MATLAB\EV_DigitalTwin\results\RunAll_20261022_053859.txt
+==============================================================
