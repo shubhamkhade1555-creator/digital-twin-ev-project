@@ -5,7 +5,7 @@ function EV_DAQ_Builder_V7(varargin)
 % ONE FILE. No helper files are needed any more: EV_SetLoadProfile and the kappa
 % change are built in. BLDCSpeedControlData.m and the model are used as they are.
 %
-% V7.6 (single final file - everything lives here)
+% V7.8 (single final file - independent battery sensor channels prepared for wiring)
 %   EV_DAQ_Builder_V7                     setup (builds LIVE tap + EV_BlackBox, saves the model) and run
 %   EV_DAQ_Builder_V7('RunAll')           model fixes + setup + run + post-process (was EV_Run_All.m)
 %   EV_DAQ_Builder_V7('Fixes', 1..4)      model fixes (was EV_Model_Fixes_V8.m)
@@ -639,6 +639,8 @@ d = {
  'imotor',      {'log_Idc_f','log_imotor'},    'A',        'Motor',   'Controller estimate max(|iabc|), 2 ms filter (not a DC-link measurement)';
  'vbatt',       {'log_vcell','log_vbatt'},     'V',        'Battery', 'Battery voltage';
  'ibatt',       {'log_icell','log_ibatt'},     'A',        'Battery', 'Battery current';
+ 'ibatt_sens',  {'log_Ibat_sens_A'},           'A',        'Battery', 'Independent physical battery current sensor';
+ 'vbatt_sens',  {'log_Vbat_sens_V'},           'V',        'Battery', 'Independent physical battery terminal voltage sensor';
  'soc',         {'log_soc'},                   '-',        'Battery', 'State of charge';
  'temperature', {'log_Tbatt_C','log_temp','temperature'}, 'degC', 'Battery', 'Battery temperature (calibrated pack/cell aggregate)';
  'battmaxtemp', {'log_TbattMax_C'},              'degC',     'Battery', 'Maximum battery cell temperature';
@@ -650,7 +652,7 @@ end
 
 function n = evKeySpecName(key)
 m = struct('rpm','RPM','rpm_ref','RPMReference','torque','MotorTorque','imotor','MotorCurrent', ...
-    'vbatt','BatteryVoltage','ibatt','BatteryCurrent','soc','SOC','temperature','BatteryTemperature', ...
+    'vbatt','BatteryVoltage','ibatt','BatteryCurrent','ibatt_sens','BatteryCurrentSensor','vbatt_sens','BatteryVoltageSensor','soc','SOC','temperature','BatteryTemperature', ...
     'battmaxtemp','BatteryTemperatureMax','motortemp','MotorTemperature', ...
     'vdc','DCLinkVoltage','omega_wheel','WheelSpeed');
 n = m.(key);
@@ -662,6 +664,8 @@ function d = evSpecDefs()
 d = {
  'BatteryVoltage',        'vbatt',      'logged',  'V',   'Battery', 'YES','YES','Battery pack voltage';
  'BatteryCurrent',        'ibatt',      'logged',  'A',   'Battery', 'YES','NO', 'Battery current';
+ 'BatteryCurrentSensor',  'ibatt_sens', 'logged',  'A',   'Battery', 'YES','NO', 'Independent physical battery current sensor; requires sensor block wiring';
+ 'BatteryVoltageSensor',  'vbatt_sens', 'logged',  'V',   'Battery', 'YES','NO', 'Independent physical battery terminal voltage sensor; requires sensor block wiring';
  'BatteryPower',          '',           'derived', 'W',   'Battery', 'YES','NO', 'BatteryVoltage*BatteryCurrent';
  'SOC',                   'soc',        'logged',  '-',   'Battery', 'YES','YES','State of charge';
  'BatteryTemperature',    'temperature','logged',  'degC','Battery', 'YES','NO', 'Battery temperature';
@@ -936,7 +940,7 @@ BB_NAME  = 'EV_BlackBox';
 ZOH_NAME = 'EV_BB_ZOH';
 TW_VAR   = 'EV_BlackBox_log';
 Ts_bb    = 1e-3;                       % 1 kHz log
-BB_TAG   = 'EV_BB_v7_7_thermal';       % rebuild existing BB to add optional motor and battery temperature channels
+BB_TAG   = 'EV_BB_v7_8_battery_sensors';       % rebuild existing BB to add optional motor and battery temperature channels
 bbPath   = [MDL '/' BB_NAME];
 
 %% ---- idempotency: keep a healthy existing BB (ZOH present AND every port connected)
@@ -979,6 +983,8 @@ sigs = {
     'Torque_Nm',   {'Tq_meas'},         'log_Tq_meas',     'Nm',        '',     0.5e-3;
     'Tmotor_C',    {'MON_Tmotor_C'},    'log_Tmotor_C',    'degC',      '',     0;
     'Tbatt_C',     {'MON_Tbatt_C'},     'log_Tbatt_C',     'degC',      '',     0;
+    'Ibat_sens_A', {'MON_Ibat_sens_A'}, 'log_Ibat_sens_A','A',         '',     0;
+    'Vbat_sens_V', {'MON_Vbat_sens_V'}, 'log_Vbat_sens_V','V',         '',     0;
 };
 
 %% ---- inspect every Goto in the model once (only GLOBAL tags are readable from the BB)
