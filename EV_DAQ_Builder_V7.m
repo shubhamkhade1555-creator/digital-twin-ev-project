@@ -1858,7 +1858,7 @@ TM.VV = toc(t0);   evMem('After V&V');
 %% ---- 12  figures ---------------------------------------------------------
 t0 = tic;
 LG('11/14 Figures');
-if cfg.fast, LG('     FAST mode: figures skipped'); else, LG('     Unified plots deferred until after N4SID identification (step 14c).'); end
+LG('     Unified PNG plots deferred until after N4SID identification (step 14c; retained in FAST mode).');
 TM.Figures = toc(t0);
 
 %% ---- 13  the 12 Excel files ----------------------------------------------
@@ -1874,14 +1874,15 @@ CAT = evCompressionAuditTable(CA, TV, nDupT, nRowsNative, nColsNative);
 
 t0 = tic;
 LG('12/14 Excel reports (12 report files + EV_Master_Data.xlsx)');
-xlOk = true;  infos = {};  CM = table();  CV = table();  PM = [];
+xlOk = NaN;   infos = {};  CM = table();  CV = table();  PM = [];
 if cfg.fast
     LG('     FAST mode: Excel reports skipped (set EV_DAQ_Fast = false for the full 13 workbooks)');
     TM.Excel = 0;
     [~, PM] = evPerformance(runDir, cfg, TM, simWall, toc(tG), CA, tEnd, 4, archDir);
 end
 if ~cfg.fast
-try
+    xlOk = true;
+    try
     % --- 12_Cell_Diagnostics first (its size feeds the memory audit)
     infos{end+1} = evXlsx(runDir, '12_Cell_Diagnostics.xlsx', evSheets12(CD), MAXB);
     CM = evCellMemoryAudit(CD, CA, infos{end}.Bytes);
@@ -1923,7 +1924,11 @@ LG(sprintf('13/14 Reports written; post-processing %.2f s', toc(tG)));
 evMem('After archive');
 finalReport(runID, MDL, tEnd, FR, rawOk, daqOk, cleanOk, auditOk, vvStr, runDir, nWarn, xlOk);
 evPrintPerformance(PM, cfg, TM, CA, vvStr, tEnd, P);
-evPrintExcelStructure(infos, cfg, CA, PM, CM, CV);
+if ~cfg.fast
+    evPrintExcelStructure(infos, cfg, CA, PM, CM, CV);
+else
+    fprintf('[DAQ] FAST mode: Excel structure audit skipped; CSV/text outputs retained.\\n');
+end
 LG('14/14 Archive complete');
 
 %% ---- 14b  Black-Box System Identification (V7.5) -----------------------
@@ -1942,7 +1947,7 @@ end
 
 %% ---- 14c unified production graphs (Battery + Motor + N4SID) -----------------------------
 % Single graph source. PASS/FAIL verdicts remain in reports and are not drawn on figures.
-if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))
+if ~logical(safeBase('EV_Ref_Skip', false))
  try
   fprintf('[DAQ] 14c. Unified Battery/Motor/N4SID graphs ...\n');
   if exist('EV_Graphs','file')==2
@@ -2007,8 +2012,8 @@ if ~got
     catch
     end
 end
-% V7.7 FAST MODE: set  EV_DAQ_Fast = true  in the base workspace to skip Excel files, figures and raw-archive
-%       compaction/writing (V&V, logs, black box and 100 ms telemetry still run). Default false = full reports.
+% FAST MODE: EV_DAQ_Fast = true skips Excel workbooks and lossless raw-archive compaction.
+%       Raw/clean CSV, text logs, V&V, Black Box/N4SID and production PNG graphs remain enabled.
 cfg.fast = false;
 try, cfg.fast = logical(evalin('base','EV_DAQ_Fast')); catch, end
 cfg.Ts_live        = 0.1;            % LIVE telemetry period [s of SIMULATION time] (0.3 s run -> 6 lines)
@@ -2995,7 +3000,14 @@ fprintf('\n====================================================\nEV DIGITAL TWIN
 fl('RUN ID', runID);  fl('MODEL', MDL);  fl('SIMULATION TIME', [f2(simDur) ' s']);  fprintf('\n');
 fl('DATA ACQUISITION', pf(daqOk));  fl('RAW DATA', pf(rawOk));  fl('DATA CLEANING', pf(cleanOk));
 fl('LOGGING AUDIT', [pf(auditOk) sprintf('  (%d warning(s), details in 05_Logging_Audit.csv)', nWarn)]);
-fl('EXCEL REPORT', iif(xlOk,'PASS','FAIL'));  fl('V&V', vv);  fprintf('\n');
+if isnumeric(xlOk) && isscalar(xlOk) && isnan(xlOk)
+    excelStatus = 'SKIPPED (FAST MODE)';
+elseif logical(xlOk)
+    excelStatus = 'PASS';
+else
+    excelStatus = 'FAIL';
+end
+fl('EXCEL REPORT', excelStatus);  fl('V&V', vv);  fprintf('\n');
 fl('FINAL RPM', [f2(FR.FinalRPM) ' rpm']);  fl('PEAK RPM', [f2(FR.PeakRPM) ' rpm']);
 fl('MOTOR CURRENT PEAK', [f2(FR.MotorCurrentPeak) ' A']);  fl('MOTOR CURRENT RMS', [f2(FR.MotorCurrentRMS) ' A']);
 fl('BATTERY CURRENT', [f2(FR.BatteryCurrent) ' A']);  fl('BATTERY VOLTAGE', [f2(FR.BatteryVoltage) ' V']);
