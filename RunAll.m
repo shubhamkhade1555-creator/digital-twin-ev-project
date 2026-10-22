@@ -281,9 +281,9 @@ C  = evalin('base', 'EV_DAQ_Clean');
 lab = {};
 try, lab = get_param([MDL '/EV_BlackBox'], 'UserData'); catch, end
 if ~iscell(lab) || numel(lab) ~= size(bb.Data, 2)
-    def = {'Vbatt_V', 'Ibatt_A', 'SOC', 'RPM_rpm', 'Idc_f_A', 'Vdc_m_V', 'omega_wheel', 'Torque_Nm', 'Tmotor_C', 'Tbatt_C'};
+    def = {'Vbatt_V', 'Ibatt_A', 'SOC', 'RPM_rpm', 'Idc_f_A', 'Vdc_m_V', 'omega_wheel', 'Torque_Nm', 'Tmotor_C', 'Tbatt_C', 'Ibat_sens_A', 'Vbat_sens_V'};
     nc = size(bb.Data, 2);
-    if nc == 10, lab = def; elseif nc == 9, lab = def(1:9); elseif nc == 8, lab = def(1:8); elseif nc == 7, lab = def(1:7); end
+    if nc <= numel(def) && nc >= 7, lab = def(1:nc); end
 end
 V   = @(n) racol(bb, lab, n);
 tb  = bb.Time(:);

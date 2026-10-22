@@ -2159,7 +2159,7 @@ end
 function [Raw, ri] = buildRaw(S, sigMap)
 % Raw = exactly what was logged, at the native sample times (no scaling,
 % no de-duplication, no interpolation unless a signal has its own time base).
-keys = {'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 ri = struct('Cols',struct(),'Resampled',{{}},'SampleCount',struct(),'SampleTime',struct(), ...
             'HasTime',false,'AllLoggedHaveData',true,'PrimaryKey','');
 have = {};
@@ -2202,13 +2202,13 @@ function [R, nDup] = compactRaw(RawFull, ri, P)
 % reduced to BatteryVoltage / BatteryCurrent / SOC (+ SOC_Min / SOC_Max); other signals as logged.
 % Repeated time stamps are collapsed (last sample kept). Per-cell data stays in 02b_Raw_PerCell.csv.
 R = RawFull(:,'Time');
-keys = {'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 for k = 1:numel(keys)
     key = keys{k};  cols = ri.Cols.(key);
     if isempty(cols), continue, end
     Y = RawFull{:, cols};
     nm = evKeySpecName(key);
-    if any(strcmp(key,{'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp'}))
+    if any(strcmp(key,{'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp'}))
         y = normSignal(Y, key, P);
         if strcmp(key,'ibatt'), y = abs(y); end      % POSITIVE-CURRENT
         R.(nm) = y;
@@ -2270,7 +2270,7 @@ tg = (0:1e-3:tEnd)';
 ci.GridRows = numel(tg);
 ci.OutsideRange = 0;  ci.GridNaN = 0;
 V = struct();  logged = struct();
-keys = {'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 for k = 1:numel(keys)
     key = keys{k};  cols = ri.Cols.(key);  logged.(key) = ~isempty(cols);
     if isempty(cols), continue; end
@@ -2299,6 +2299,13 @@ if isfield(V, 'ibatt')
         ci.BatteryCurrentSign = 'Positive on discharge -> kept unchanged';
     end
     ci.Notes{end+1} = sprintf('BatteryCurrent sign audit: %s', ci.BatteryCurrentSign);
+end
+if isfield(V, 'ibatt_sens')
+    mean_ibatt_sens = mean(V.ibatt_sens, 'omitnan');
+    if mean_ibatt_sens < 0
+        ci.Notes{end+1} = 'BatteryCurrentSensor sign audit: inverted negative sensor polarity to positive discharge';
+        V.ibatt_sens = -V.ibatt_sens;
+    end
 end
 if ~isfield(V,'rpm_ref') && isfield(V,'rpm')
     V.rpm_ref = min(P.rpm_ramp*tg, P.rpm_ref);  ci.RefDerived = true;
@@ -2370,7 +2377,7 @@ end
 function L = makeLive(C)
 cfgL = evCfg();  tl = (0:cfgL.Ts_live:C.Time(end))';
 L = table(tl,'VariableNames',{'Time'});
-want = {'BatteryVoltage','BatteryCurrent','SOC','BatteryPower','DCLinkVoltage','RPMReference','RPM', ...
+want = {'BatteryVoltage','BatteryCurrent','BatteryCurrentSensor','BatteryVoltageSensor','SOC','BatteryPower','DCLinkVoltage','RPMReference','RPM', ...
         'MotorTorque','MotorCurrent','WheelSpeed','BatteryTemperature','BatteryTemperatureMax','MotorTemperature', ...
         'MotorMechanicalPower','Efficiency'};
 for k = 1:numel(want)

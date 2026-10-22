@@ -453,8 +453,8 @@ if ~iscell(lab) || isempty(lab)
     try, lab = evalin('base', 'EV_BB_ColumnLabels'); catch, lab = {}; end
 end
 if ~iscell(lab) || numel(lab) ~= nc
-    def = {'Vbatt_V', 'Ibatt_A', 'SOC', 'RPM_rpm', 'Idc_f_A', 'Vdc_m_V', 'omega_wheel', 'Torque_Nm', 'Tmotor_C', 'Tbatt_C'};
-    if nc == 10, lab = def; elseif nc == 9, lab = def(1:9); elseif nc == 8, lab = def(1:8); elseif nc == 7, lab = def(1:7); end
+    def = {'Vbatt_V', 'Ibatt_A', 'SOC', 'RPM_rpm', 'Idc_f_A', 'Vdc_m_V', 'omega_wheel', 'Torque_Nm', 'Tmotor_C', 'Tbatt_C', 'Ibat_sens_A', 'Vbat_sens_V'};
+    if nc <= numel(def) && nc >= 7, lab = def(1:nc); end
 end
 if ~iscell(lab), lab = {}; end
 lab = lab(:)';
