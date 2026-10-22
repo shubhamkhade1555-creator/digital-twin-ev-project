@@ -642,7 +642,7 @@ d = {
  'ibatt_sens',  {'log_Ibat_sens_A'},           'A',        'Battery', 'Independent physical battery current sensor';
  'vbatt_sens',  {'log_Vbat_sens_V'},           'V',        'Battery', 'Independent physical battery terminal voltage sensor';
  'soc',         {'log_soc'},                   '-',        'Battery', 'State of charge';
- 'temperature', {'log_Tbatt_C','log_temp','temperature'}, 'degC', 'Battery', 'Battery temperature (calibrated pack/cell aggregate)';
+ 'temperature', {'log_temp','log_Tbatt_C','temperature'}, 'degC', 'Battery', 'Battery temperature (per-cell vector or aggregate)';
  'battmaxtemp', {'log_TbattMax_C'},              'degC',     'Battery', 'Maximum battery cell temperature';
  'motortemp',   {'log_Tmotor_C'},                'degC',     'Motor',   'Motor housing temperature';
  'vdc',         {'log_Vdc_m','log_vdc_m'},     'V',        'DC-Link', 'DC link voltage';
@@ -2159,7 +2159,7 @@ end
 function [Raw, ri] = buildRaw(S, sigMap)
 % Raw = exactly what was logged, at the native sample times (no scaling,
 % no de-duplication, no interpolation unless a signal has its own time base).
-keys = {'vbatt','ibatt','soc','temperature','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 ri = struct('Cols',struct(),'Resampled',{{}},'SampleCount',struct(),'SampleTime',struct(), ...
             'HasTime',false,'AllLoggedHaveData',true,'PrimaryKey','');
 have = {};
@@ -2202,13 +2202,13 @@ function [R, nDup] = compactRaw(RawFull, ri, P)
 % reduced to BatteryVoltage / BatteryCurrent / SOC (+ SOC_Min / SOC_Max); other signals as logged.
 % Repeated time stamps are collapsed (last sample kept). Per-cell data stays in 02b_Raw_PerCell.csv.
 R = RawFull(:,'Time');
-keys = {'vbatt','ibatt','soc','temperature','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 for k = 1:numel(keys)
     key = keys{k};  cols = ri.Cols.(key);
     if isempty(cols), continue, end
     Y = RawFull{:, cols};
     nm = evKeySpecName(key);
-    if any(strcmp(key,{'vbatt','ibatt','soc'}))
+    if any(strcmp(key,{'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp'}))
         y = normSignal(Y, key, P);
         if strcmp(key,'ibatt'), y = abs(y); end      % POSITIVE-CURRENT
         R.(nm) = y;
@@ -2270,7 +2270,7 @@ tg = (0:1e-3:tEnd)';
 ci.GridRows = numel(tg);
 ci.OutsideRange = 0;  ci.GridNaN = 0;
 V = struct();  logged = struct();
-keys = {'vbatt','ibatt','soc','temperature','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 for k = 1:numel(keys)
     key = keys{k};  cols = ri.Cols.(key);  logged.(key) = ~isempty(cols);
     if isempty(cols), continue; end
@@ -2350,8 +2350,15 @@ switch key
             y = mean(Y,2,'omitnan')*P.cells_parallel;
             note = sprintf('BatteryCurrent: %d columns, mean cell current x%d (cells_parallel)', nc, P.cells_parallel);
         end
-    case 'temperature'
-        y = mean(Y,2,'omitnan');
+    case {'temperature', 'battmaxtemp', 'motortemp'}
+        if strcmp(key, 'battmaxtemp')
+            y = max(Y,[],2,'omitnan');
+        else
+            y = mean(Y,2,'omitnan');
+        end
+        if median(y,'omitnan') > 200
+            y = y - 273.15; note = sprintf('%s: converted Kelvin to degC (-273.15)', evKeySpecName(key));
+        end
     case 'soc'
         y = mean(Y,2,'omitnan');
         if max(y) > 1.5, y = y/100; note = 'SOC: logged in percent, converted to 0..1'; end
