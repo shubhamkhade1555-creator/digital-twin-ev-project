@@ -1835,7 +1835,7 @@ TM.VV = toc(t0);   evMem('After V&V');
 %% ---- 12  figures ---------------------------------------------------------
 t0 = tic;
 LG('11/14 Figures');
-if cfg.fast, LG('     FAST mode: figures skipped'); else, makeFigures(Clean, runDir, figDir, LG); end
+if cfg.fast, LG('     FAST mode: figures skipped'); else, LG('     Unified plots deferred until after N4SID identification (step 14c).'); end
 TM.Figures = toc(t0);
 
 %% ---- 13  the 12 Excel files ----------------------------------------------
@@ -1917,37 +1917,16 @@ catch ME_bb
     fprintf('[DAQ]    Black-Box SysID skipped (non-fatal): %s\n', ME_bb.message);
 end
 
-%% ---- 14c  numbered clean data + comparison graphs + reference Excel, inside THIS run folder ----
-% EV_MakeReference does it, so Run in Simulink (typed Stop Time) and RunAll give the same files:
-%   EV_RUN_<time>\EV_DAQ_Clean_<run no>_<seconds x 10>.mat/.csv , Figures\Battery , Figures\Motor , MASTER files + Excel
-if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))      % EV_Ref_Skip = true skips the reference graphs + Excel only
-    try
-        fprintf('[DAQ] 14c. Clean data + comparison graphs + reference Excel ...\n');
-        if exist('EV_MakeReference', 'file') == 2
-            EV_MakeReference(Clean, [], [], runDir);
-            LG('14c/14 Numbered clean data, comparison graphs and reference Excel complete');
-        else
-            LG('14c/14 skipped: EV_MakeReference.m is not in the project folder');
-        end
-    catch ME_pr
-        LG(sprintf('14c/14 Comparison graphs skipped: %s', ME_pr.message));
-        fprintf('[DAQ]    Comparison graphs skipped (non-fatal): %s\n', ME_pr.message);
-    end
-end
-
-
-%% ---- 14d  integrated motor comparison graphs (same file; manual Run + RunAll) ---------------
-% Keep graph logic in this existing DAQ builder: no extra MATLAB helper file is required.
-% The Simulink StopFcn runs this block for both toolbar Run and RunAll.
+%% ---- 14c unified production graphs (Battery + Motor + N4SID) -----------------------------
+% Single graph source. PASS/FAIL verdicts remain in reports and are not drawn on figures.
 if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))
-    try
-        fprintf('[DAQ] 14d. Integrated motor/powertrain comparisons ...\n');
-        evAutoComparisonGraphs(Clean, runDir, P);
-        LG('14d/14 Integrated motor/powertrain comparison graphs complete');
-    catch ME_cmp
-        LG(sprintf('14d/14 Motor comparison graphs skipped: %s', ME_cmp.message));
-        fprintf('[DAQ]    Motor comparison graphs skipped (non-fatal): %s\n', ME_cmp.message);
-    end
+ try
+  fprintf('[DAQ] 14c. Unified Battery/Motor/N4SID graphs ...\n');
+  if exist('EV_Graphs','file')==2
+   EV_Graphs('generate',Clean,runDir,P);LG('14c/14 unified graph generation complete');
+  else,LG('14c/14 skipped: EV_Graphs.m missing');end
+ catch ME_graph,LG(sprintf('14c/14 graph generation warning: %s',ME_graph.message));fprintf('[DAQ] Graph warning: %s\n',ME_graph.message);
+ end
 end
 
 dtxt = '';
