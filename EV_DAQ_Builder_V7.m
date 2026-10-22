@@ -1935,6 +1935,30 @@ if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))      % EV_Ref_Skip = tr
     end
 end
 
+
+%% ---- 14d  automatic additional comparisons for both Simulink Run and RunAll ---------------------
+% Runs in this StopFcn callback, so manual Simulink execution and RunAll share
+% one post-processing path. The utility writes separate, uniquely named files
+% and skips any channel/reference that is not genuinely present in Clean.
+if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))
+    try
+        if exist('EV_MakeComparisonGraphs', 'file') == 2
+            fprintf('[DAQ] 14d. Unique motor/powertrain comparison graphs ...\\n');
+            optsGraphs = struct( ...
+                'OutputDir', fullfile(runDir, 'Figures', 'Comparisons'), ...
+                'ShowFigures', false, ...
+                'TimeRange', []);
+            EV_MakeComparisonGraphs(Clean, [], optsGraphs);
+            LG('14d/14 Unique motor/powertrain comparison graphs complete');
+        else
+            LG('14d/14 skipped: EV_MakeComparisonGraphs.m not found on MATLAB path');
+        end
+    catch ME_cmp
+        LG(sprintf('14d/14 Motor comparison graphs skipped: %s', ME_cmp.message));
+        fprintf('[DAQ]    Motor comparison graphs skipped (non-fatal): %s\\n', ME_cmp.message);
+    end
+end
+
 dtxt = '';
 S1 = evSession('get');
 try
