@@ -357,13 +357,17 @@ if all(ismember({'MotorCurrent', 'BatteryVoltage', 'BatteryCurrent', 'RPM'}, vn)
     end
 
     % Archive check: only use a real DCLinkCurrent column; never substitute MotorCurrent.
-    if ismember('DCLinkCurrent', vn)
+    pCV = '';
+    if ismember('DCLinkVoltage', vn), pCV = 'DCLinkVoltage'; elseif ismember('Vdc', vn), pCV = 'Vdc'; end
+    if ismember('DCLinkCurrent', vn) && ~isempty(pCV) && ...
+            all(ismember({'BatteryVoltage','BatteryCurrent'}, vn))
         IdcC = C.DCLinkCurrent;
+        VdcC = C.(pCV);
         if any(isfinite(IdcC(mc)))
-            mC = mc & isfinite(C.DCLinkVoltage) & isfinite(IdcC) & ...
+            mC = mc & isfinite(VdcC) & isfinite(IdcC) & ...
                 isfinite(C.BatteryVoltage) & isfinite(C.BatteryCurrent);
             if any(mC) && mean(C.BatteryVoltage(mC).*abs(C.BatteryCurrent(mC))) >= 1
-                pC = mean(abs(C.DCLinkVoltage(mC).*IdcC(mC))) / ...
+                pC = mean(abs(VdcC(mC).*IdcC(mC))) / ...
                     mean(C.BatteryVoltage(mC).*abs(C.BatteryCurrent(mC)));
                 R = rarec(R, say, rapf(pC >= 0.85 && pC <= 1.02, 'WARN'), ...
                     'Power balance (archive; measured DCLinkCurrent)', ...
@@ -378,7 +382,7 @@ if all(ismember({'MotorCurrent', 'BatteryVoltage', 'BatteryCurrent', 'RPM'}, vn)
         end
     else
         R = rarec(R, say, 'WARN', 'Power balance (archive)', ...
-            'NOT_AVAILABLE: archive has no DCLinkCurrent column; MotorCurrent proxy is prohibited');
+            'NOT_AVAILABLE: archive lacks measured DCLinkCurrent, DCLinkVoltage/Vdc, or battery power channels');
     end
 else
     R = rarec(R, say, 'WARN', 'BlackBox vs archive', 'archive table has other column names - comparison skipped');
