@@ -132,6 +132,7 @@ if ~isempty(p.Results.Fast), assignin('base', 'EV_DAQ_Fast', p.Results.Fast); en
 say('[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...');
 evalin('base', 'BLDCSpeedControlData;');
 rpm_ref = rav('rpm_ref', 2950);  I_cont = rav('I_cont', 30);  I_peak = rav('I_peak', 45);
+I_project_accept = 35; % Owner-approved project acceptance threshold for motor RMS/average/hold checks only; not a datasheet rating
 Kt      = rav('Kt', 0.107);      t_stop = rav('t_stop', 0.4);  pack_Ah = rav('pack_Ah', 50);
 if ~isempty(userStop)
     t_stop = userStop;  assignin('base', 't_stop', t_stop);   % BLDCSpeedControlData.m sets 0.4; the user's value wins
@@ -162,8 +163,8 @@ else
     say('[RunAll]    *** DIAGNOSTIC MODE ACTIVE *** (t_stop = %g s). Full V&V checks will NOT be certified.', t_stop);
     R = rarec(R, say, 'WARN', 'Validation Duration', sprintf('Diagnostic short run (%.3f s). Full V&V not certified.', t_stop));
 end
-say('[RunAll]    rpm_ref=%g rpm  I_cont=%g A  I_peak=%g A  Kt=%g N*m/A  t_stop=%g s  pack=%g Ah', ...
-    rpm_ref, I_cont, I_peak, Kt, t_stop, pack_Ah);
+say('[RunAll]    rpm_ref=%g rpm  I_cont=%g A (datasheet; 35 A continuous unconfirmed)  I_project_accept=%g A  I_peak=%g A  Kt=%g N*m/A  t_stop=%g s  pack=%g Ah', ...
+    rpm_ref, I_cont, I_project_accept, I_peak, Kt, t_stop, pack_Ah);
 Ts_run = rav('Ts', NaN);
 say('[RunAll]    Ts = %g s (project setting: 1e-5 s = 2x faster, verified 15 PASS / 4 WARN / 0 FAIL)', Ts_run);
 if abs(Ts_run - 1e-5) > 1e-12
@@ -314,8 +315,9 @@ kt = mean(Tq(w)) / mean(Im(w));
 R = rarec(R, say, rapf(abs(kt - Kt) / Kt <= 0.05, 'WARN'), 'Torque per amp (Kt)', sprintf('%.4f N*m/A (datasheet %.3f, +/-5%%)', kt, Kt));
 R = rarec(R, say, rapf(max(Im) <= 1.1 * I_peak, 'FAIL'), 'Peak motor current', sprintf('max %.1f A (I_peak %g A)', max(Im), I_peak));
 w2 = tb >= t_stop - 0.02;
-R = rarec(R, say, rapf(mean(Im(w2)) <= I_cont, 'WARN'), 'Motor current vs I_cont', ...
-    sprintf('mean of last 20 ms = %.1f A (I_cont %g A; run is short, load only reached 3.18 Nm at 0.28 s)', mean(Im(w2)), I_cont));
+R = rarec(R, say, rapf(mean(Im(w2)) <= I_project_accept, 'WARN'), 'Motor current vs project acceptance limit', ...
+    sprintf('mean of last 20 ms = %.1f A (project limit %.0f A; datasheet continuous rating %.0f A remains separate and unconfirmed for 35 A operation; load reaches 3.18 Nm at 0.28 s)', ...
+    mean(Im(w2)), I_project_accept, I_cont));
 dSOCexp = trapz(tb, abs(Ib)) / 3600 / pack_Ah;
 dSOC    = SOC(1) - SOC(end);
 if dSOCexp > 0
