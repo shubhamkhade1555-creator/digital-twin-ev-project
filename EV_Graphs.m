@@ -33,16 +33,18 @@ case 'generate'
  out=single(C,t,root,'Battery',out,{'BatteryTemperature','Temperature'},'Battery temperature','Temperature (degC)','B04_Battery_Temperature');
  vn=C.Properties.VariableNames;ix=find(contains(vn,'CellVoltage','IgnoreCase',true)|contains(vn,'Cell_Voltage','IgnoreCase',true)|contains(vn,'Vcell_','IgnoreCase',true));
  if ~isempty(ix),out=multi(C,t,root,out,ix,'Battery','Cell/group voltages','Voltage (V)','B05_Cell_Voltage');else,out.warnings{end+1}='Cell voltage: no cell-level columns logged';end
- V=col(C,{'BatteryVoltage','Vbatt_V'});I=col(C,{'BatteryCurrent','Ibatt_A'});if ~isempty(V)&&~isempty(I),out=draw(t,V(:).*I(:),root,'Battery','Battery power','Power (W)','B06_Battery_Power',out);end
+ V=col(C,{'BatteryVoltage','Vbatt_V'});I=col(C,{'BatteryCurrent','Ibatt_A'});if ~isempty(V)&&~isempty(I),out=draw(t,V(:).*I(:),root,'Battery','Battery power','Power (W)','B06_Battery_Power',out);out=batteryMonitor(t,V,I,root,out);end
  % Category 2: normal motor plots
  out=pair(C,t,root,out,{'RPMReference','RPM_Reference','rpm_ref'},{'RPM','MotorRPM','RPM_rpm'},'Motor RPM reference vs actual','Motor','Speed (rpm)','M01_RPM_Tracking');
  out=single(C,t,root,'Motor',out,{'MotorCurrent','Idc_f_A'},'Motor current (logged signal)','Current (A)','M02_Motor_Current');
+ out=motorCurrentLimits(C,t,root,out,P);
  out=single(C,t,root,'Motor',out,{'MotorTorque','Torque_Nm','Torque','Tq_meas'},'Motor torque','Torque (N m)','M03_Motor_Torque');
  out=single(C,t,root,'Motor',out,{'DCLinkVoltage','Vdc_m_V','Vdc'},'DC-link voltage','Voltage (V)','M04_DC_Link_Voltage');
  out=single(C,t,root,'Motor',out,{'MotorTerminalVoltage','MotorVoltage'},'Motor terminal voltage','Voltage (V)','M05_Motor_Terminal_Voltage');
  phases={{'PhaseAVoltage','Va','V_phase_A'},{'PhaseBVoltage','Vb','V_phase_B'},{'PhaseCVoltage','Vc','V_phase_C'}};
  for k=1:3,out=single(C,t,root,'Motor',out,phases{k},sprintf('Motor phase %c voltage','A'+k-1),'Voltage (V)',sprintf('M0%d_Phase_%c',5+k,'A'+k-1));end
  out=single(C,t,root,'Motor',out,{'LineVoltageAB','Vab','V_A_B'},'Line voltage A-B','Voltage (V)','M09_Line_Voltage_AB');
+ out=torqueLoad(C,t,root,out);
  Pm=col(C,{'MotorMechanicalPower'});if isempty(Pm),Tq=col(C,{'MotorTorque','Torque_Nm','Tq_meas'});rpm=col(C,{'RPM','MotorRPM'});if ~isempty(Tq)&&~isempty(rpm),Pm=abs(Tq(:).*rpm(:)*2*pi/60);end,end
  if ~isempty(Pm),out=draw(t,Pm,root,'Motor','Motor mechanical power','Power (W)','M10_Motor_Mechanical_Power',out);end
  out=batteryID(runDir,root,out);out=motorID(C,t,runDir,root,out);
@@ -68,6 +70,32 @@ n=min([numel(t),numel(x),numel(y)]);f=figure('Visible','off','Color','w','Positi
 end
 function out=multi(T,t,r,out,ix,g,ttl,ylab,nm)
 f=figure('Visible','off','Color','w','Position',[100 100 1400 820]);a=axes(f);plot(a,t,T{:,ix},'LineWidth',1.2);grid(a,'on');xlabel(a,'Time (s)');ylabel(a,ylab);title(a,ttl,'FontWeight','bold');legend(a,T.Properties.VariableNames(ix),'Interpreter','none','Location','eastoutside');out=saveFig(f,r,g,nm,out);
+end
+function out=batteryMonitor(t,V,I,r,out)
+n=min([numel(t),numel(V),numel(I)]);f=figure('Visible','off','Color','w','Position',[100 100 1400 820]);a=axes(f);
+yyaxis(a,'left');plot(a,t(1:n),V(1:n),'LineWidth',1.8);ylabel(a,'Battery voltage (V)');
+yyaxis(a,'right');plot(a,t(1:n),I(1:n),'LineWidth',1.8);ylabel(a,'Battery current (A)');
+grid(a,'on');xlabel(a,'Time (s)');title(a,'Battery voltage and current monitoring','FontWeight','bold');
+out=saveFig(f,r,'Battery','B07_Battery_Monitoring',out);
+end
+function out=motorCurrentLimits(T,t,r,out,P)
+I=col(T,{'MotorCurrent','Idc_f_A'});if isempty(I),return,end
+if ~isfield(P,'I_cont'),try,P.I_cont=evalin('base','I_cont');catch,end,end
+if ~isfield(P,'I_peak'),try,P.I_peak=evalin('base','I_peak');catch,end,end
+n=min(numel(t),numel(I));f=figure('Visible','off','Color','w','Position',[100 100 1400 820]);a=axes(f);
+plot(a,t(1:n),I(1:n),'LineWidth',1.7,'DisplayName','Logged motor current');hold(a,'on');
+if isfield(P,'I_cont')&&isnumeric(P.I_cont)&&isscalar(P.I_cont)&&isfinite(P.I_cont),yline(a,P.I_cont,'--','Continuous limit');yline(a,-P.I_cont,'--','HandleVisibility','off');end
+if isfield(P,'I_peak')&&isnumeric(P.I_peak)&&isscalar(P.I_peak)&&isfinite(P.I_peak),yline(a,P.I_peak,':','Peak limit');yline(a,-P.I_peak,':','HandleVisibility','off');end
+grid(a,'on');xlabel(a,'Time (s)');ylabel(a,'Current (A)');title(a,'Motor current and configured limits','FontWeight','bold');legend(a,'Location','best');
+out=saveFig(f,r,'Motor','M02b_Motor_Current_Limits',out);
+end
+function out=torqueLoad(T,t,r,out)
+a=col(T,{'MotorTorque','Torque_Nm','Torque','Tq_meas'});b=col(T,{'LoadTorque','TorqueReference','LoadTorqueReference','LoadTorqueRef'});
+if isempty(a)||isempty(b),out.warnings{end+1}='Motor torque/load comparison: load torque reference not logged';return,end
+n=min([numel(t),numel(a),numel(b)]);f=figure('Visible','off','Color','w','Position',[100 100 1400 820]);ax=axes(f);
+plot(ax,t(1:n),a(1:n),'LineWidth',1.8,'DisplayName','Motor torque');hold(ax,'on');plot(ax,t(1:n),b(1:n),'--','LineWidth',1.8,'DisplayName','Load/reference torque');
+grid(ax,'on');xlabel(ax,'Time (s)');ylabel(ax,'Torque (N m)');title(ax,'Motor torque vs load/reference torque','FontWeight','bold');legend(ax,'Location','best');
+out=saveFig(f,r,'Motor','M11_Torque_Load_Comparison',out);
 end
 function out=batteryID(runDir,r,out)
 f=fullfile(runDir,'EV_BlackBox_SysID.mat');if ~isfile(f),out.warnings{end+1}='Battery N4SID: run-specific model/validation data unavailable';return,end
