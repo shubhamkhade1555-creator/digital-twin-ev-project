@@ -337,14 +337,48 @@ if all(ismember({'MotorCurrent', 'BatteryVoltage', 'BatteryCurrent', 'RPM'}, vn)
     R = rarec(R, say, rapf(abs(d4) < 0.10,  'WARN'), 'BlackBox vs archive: battery current', ...
         sprintf('%+.1f %%  (BB %.2f A, archive %.2f A; ripple std BB %.2f A, archive %.2f A)', 100*d4, ...
         mean(Ib(w2)), mean(C.BatteryCurrent(mc)), std(Ib(w2)), std(C.BatteryCurrent(mc))));
-    % which one is physically right? buck power balance Vdc*Idc / (Vbatt*Ibatt) should be about 0.85 ... 1.02
-    pBB = mean(Vd(w2) .* Im(w2)) / mean(Vb(w2) .* abs(Ib(w2)));
-    R = rarec(R, say, rapf(pBB >= 0.85 && pBB <= 1.02, 'WARN'), 'Power balance (Black Box)', sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pBB));
-    pCV = '';
-    if ismember('DCLinkVoltage', vn), pCV = 'DCLinkVoltage'; elseif ismember('Vdc', vn), pCV = 'Vdc'; end
-    if ~isempty(pCV)
-        pC = mean(C.(pCV)(mc) .* C.MotorCurrent(mc)) / mean(C.BatteryVoltage(mc) .* abs(C.BatteryCurrent(mc)));
-        R = rarec(R, say, rapf(pC >= 0.85 && pC <= 1.02, 'WARN'), 'Power balance (archive)', sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pC));
+    % DC-link power balance MUST use an independent measured DCLinkCurrent channel.
+    % Idc_f_A / MotorCurrent is a filtered controller estimate, not a conductor measurement.
+    IdcBB = V('DCLinkCurrent_A');
+    if isempty(IdcBB) || ~any(isfinite(IdcBB))
+        R = rarec(R, say, 'WARN', 'Power balance (Black Box)', ...
+            'NOT_AVAILABLE: no finite measured DCLinkCurrent channel; controller estimate intentionally not used');
+    else
+        mbb = w2 & isfinite(Vd) & isfinite(IdcBB) & isfinite(Vb) & isfinite(Ib);
+        if any(mbb) && mean(Vb(mbb).*abs(Ib(mbb))) >= 1
+            pBB = mean(abs(Vd(mbb).*IdcBB(mbb))) / mean(Vb(mbb).*abs(Ib(mbb)));
+            R = rarec(R, say, rapf(pBB >= 0.85 && pBB <= 1.02, 'WARN'), ...
+                'Power balance (Black Box; measured DCLinkCurrent)', ...
+                sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pBB));
+        else
+            R = rarec(R, say, 'WARN', 'Power balance (Black Box)', ...
+                'NOT_AVAILABLE: no aligned finite DCLinkCurrent and battery power samples');
+        end
+    end
+
+    % Archive check: only use a real DCLinkCurrent column; never substitute MotorCurrent.
+    if ismember('DCLinkCurrent', vn)
+        IdcC = C.DCLinkCurrent;
+        if any(isfinite(IdcC(mc)))
+            mC = mc & isfinite(C.DCLinkVoltage) & isfinite(IdcC) & ...
+                isfinite(C.BatteryVoltage) & isfinite(C.BatteryCurrent);
+            if any(mC) && mean(C.BatteryVoltage(mC).*abs(C.BatteryCurrent(mC))) >= 1
+                pC = mean(abs(C.DCLinkVoltage(mC).*IdcC(mC))) / ...
+                    mean(C.BatteryVoltage(mC).*abs(C.BatteryCurrent(mC)));
+                R = rarec(R, say, rapf(pC >= 0.85 && pC <= 1.02, 'WARN'), ...
+                    'Power balance (archive; measured DCLinkCurrent)', ...
+                    sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pC));
+            else
+                R = rarec(R, say, 'WARN', 'Power balance (archive)', ...
+                    'NOT_AVAILABLE: no aligned finite DC-link and battery power samples');
+            end
+        else
+            R = rarec(R, say, 'WARN', 'Power balance (archive)', ...
+                'NOT_AVAILABLE: DCLinkCurrent is absent or all NaN in the evaluation window');
+        end
+    else
+        R = rarec(R, say, 'WARN', 'Power balance (archive)', ...
+            'NOT_AVAILABLE: archive has no DCLinkCurrent column; MotorCurrent proxy is prohibited');
     end
 else
     R = rarec(R, say, 'WARN', 'BlackBox vs archive', 'archive table has other column names - comparison skipped');
