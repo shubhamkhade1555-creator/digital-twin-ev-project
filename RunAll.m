@@ -4,11 +4,12 @@ function result = RunAll(varargin)
 %   RunAll                  full run: paths -> checks -> load -> setup -> simulate -> verify
 %   RunAll('Fixes',false)   skip the "buck snubber = exclude" model fix
 %   RunAll('Timeout',1800)  maximum wall-clock seconds to wait for the simulation (default 3600)
-%   RunAll('StopTime',0.1)  simulate 0.1 s (any value). Without this option RunAll uses the Stop Time that is
-%                           currently typed in the Simulink toolbar of the open model; only if the model is
-%                           not open it uses the value saved in the .slx file.
+%   RunAll('StopTime',0.1)  simulate 0.1 s (any value). Without this option RunAll uses the open model's Stop Time,
+%                           or the saved .slx value when the model is not open.
 %   RunAll('Compile',true)  also run a separate compile check first (default off: one compile less, faster start)
-%   RunAll('Fast',true)     skip Excel files, figures and raw-archive compaction (much shorter wait after the run)
+%   RunAll('Fast',true)     fast post-processing (default): retain CSV/text, V&V, N4SID and PNG graphs
+%   RunAll('FastRestart',true) reuse compiled model across repeated runs (first run still compiles).
+%                            Turn FastRestart off before manually editing/adding Simulink blocks.
 %
 %   HOW TO USE (every group member):
 %     1. Put RunAll.m in the SAME folder as BLDCSpeedControl_EV_Layout_v2.slx and EV_DAQ_Builder_V7.m
@@ -25,7 +26,7 @@ function result = RunAll(varargin)
 %   STEP 10: unified Battery, Motor and N4SID graph generation through EV_Graphs.m.
 %     RunAll and the model StopFcn use the same graph source; duplicate generation is avoided.
 %     Figures are saved under each run's Figures\Battery, Figures\Motor,
-%     Figures\N4SID_Battery and Figures\N4SID_Motor folders. PNG (300 dpi) and vector PDF are used where supported.
+%     Figures\N4SID_Battery and Figures\N4SID_Motor folders. PNG (300 dpi) only.
 %     PASS/FAIL verdicts remain in text/CSV reports and are not written on graphs.
 %
 %   RunAll does NOT change any physics or parameter. It only calls the existing project files.
@@ -34,7 +35,8 @@ p = inputParser;
 addParameter(p, 'Fixes',   true, @islogical);
 addParameter(p, 'Timeout', 3600, @isnumeric);
 addParameter(p, 'StopTime', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && x > 0));
-addParameter(p, 'Fast', [], @(x) isempty(x) || islogical(x));
+addParameter(p, 'Fast', true, @islogical); % fast post-processing is default; pass Fast=false for full Excel reports
+addParameter(p, 'FastRestart', false, @islogical); % opt-in: keep compiled model for repeated runs in this MATLAB session
 addParameter(p, 'Compile', false, @islogical);   % true = separate compile check before the run (the run compiles anyway; skipping saves one full Simscape compile)
 addParameter(p, 'FullValidation', true, @islogical); % enforce duration >= 0.400 s (min 0.350 s) for speed ramp, load ramp & hold
 addParameter(p, 'DiagnosticMode', false, @islogical); % allow short-run diagnostic simulations (< 0.350 s)
@@ -111,8 +113,8 @@ end
 if ~any(strcmp(names, 'Simscape Battery')) || ~any(strcmp(names, 'Simscape Electrical'))
     R = rarec(R, say, 'WARN', 'Products', 'Simscape Electrical / Battery not detected - the model may fail to compile');
 end
-if ~ispc
-    R = rarec(R, say, 'WARN', 'Excel reports', 'not Windows - the Excel files of the archive need Excel (COM) and may be skipped or fail');
+if ~ispc && ~p.Results.Fast
+    R = rarec(R, say, 'WARN', 'Excel reports', 'not Windows - full Excel reporting requires Excel/COM and may be skipped or fail');
 end
 
 %% ---- 3b. remember the Stop Time the user typed in the toolbar (the reload in step 5 would discard it) ---
@@ -126,12 +128,18 @@ if isempty(userStop) && bdIsLoaded(MDL)
     catch
     end
 end
-if ~isempty(p.Results.Fast), assignin('base', 'EV_DAQ_Fast', p.Results.Fast); end
+assignin('base', 'EV_DAQ_Fast', p.Results.Fast);
+if p.Results.Fast
+    say('[RunAll] Fast mode ON: Excel workbooks and raw-archive compaction skipped; raw/clean data, Black Box, V&V, N4SID and PNG graphs retained.');
+else
+    say('[RunAll] Full reporting mode ON: Excel workbooks and raw-archive compaction enabled.');
+end
 
 %% ---- 4. parameters ------------------------------------------------------------------------------
 say('[RunAll] 4. Loading parameters (BLDCSpeedControlData.m) ...');
 evalin('base', 'BLDCSpeedControlData;');
 rpm_ref = rav('rpm_ref', 2950);  I_cont = rav('I_cont', 30);  I_peak = rav('I_peak', 45);
+I_project_accept = 35; % Owner-approved project acceptance threshold for motor RMS/average/hold checks only; not a datasheet rating
 Kt      = rav('Kt', 0.107);      t_stop = rav('t_stop', 0.4);  pack_Ah = rav('pack_Ah', 50);
 if ~isempty(userStop)
     t_stop = userStop;  assignin('base', 't_stop', t_stop);   % BLDCSpeedControlData.m sets 0.4; the user's value wins
@@ -162,8 +170,8 @@ else
     say('[RunAll]    *** DIAGNOSTIC MODE ACTIVE *** (t_stop = %g s). Full V&V checks will NOT be certified.', t_stop);
     R = rarec(R, say, 'WARN', 'Validation Duration', sprintf('Diagnostic short run (%.3f s). Full V&V not certified.', t_stop));
 end
-say('[RunAll]    rpm_ref=%g rpm  I_cont=%g A  I_peak=%g A  Kt=%g N*m/A  t_stop=%g s  pack=%g Ah', ...
-    rpm_ref, I_cont, I_peak, Kt, t_stop, pack_Ah);
+say('[RunAll]    rpm_ref=%g rpm  I_cont=%g A (datasheet; 35 A continuous unconfirmed)  I_project_accept=%g A  I_peak=%g A  Kt=%g N*m/A  t_stop=%g s  pack=%g Ah', ...
+    rpm_ref, I_cont, I_project_accept, I_peak, Kt, t_stop, pack_Ah);
 Ts_run = rav('Ts', NaN);
 say('[RunAll]    Ts = %g s (project setting: 1e-5 s = 2x faster, verified 15 PASS / 4 WARN / 0 FAIL)', Ts_run);
 if abs(Ts_run - 1e-5) > 1e-12
@@ -172,35 +180,86 @@ end
 
 %% ---- 5. models ----------------------------------------------------------------------------------
 say('[RunAll] 5. Loading models ...');
+fastRestartActive = false;
 if bdIsLoaded(MDL)
-    if ~strcmpi(get_param(MDL, 'SimulationStatus'), 'stopped')
-        error('RunAll:running', 'Model %s is still running. Press STOP, wait for Ready, then run again.', MDL);
+    stNow = get_param(MDL, 'SimulationStatus');
+    frOn = strcmpi(get_param(MDL, 'FastRestart'), 'on');
+    % A completed Fast Restart run leaves the model initialized. Keep it initialized
+    % only when explicitly requested; otherwise disable it before allowing setup/editing.
+    if frOn && strcmpi(stNow, 'initialized') && ~p.Results.FastRestart
+        set_param(MDL, 'FastRestart', 'off');
+        stNow = get_param(MDL, 'SimulationStatus');
+        say('[RunAll]    Fast Restart disabled; model released for normal setup/editing.');
+        frOn = false;
+    elseif frOn && ~strcmpi(stNow, 'initialized')
+        set_param(MDL, 'FastRestart', 'off');
+        stNow = get_param(MDL, 'SimulationStatus');
+        say('[RunAll]    stale Fast Restart state cleared before setup.');
+        frOn = false;
     end
-    close_system(MDL, 0);      % reload from disk so every group member runs the file as saved
-    say('[RunAll]    closed the old copy of %s (reload from disk).', MDL);
+    fastRestartActive = p.Results.FastRestart && frOn && strcmpi(stNow, 'initialized');
+    if ~strcmpi(stNow, 'stopped') && ~fastRestartActive
+        error('RunAll:running', 'Model %s is in state "%s". Press STOP, wait for Ready, or disable Fast Restart before setup.', MDL, stNow);
+    end
+    if fastRestartActive
+        say('[RunAll]    Fast Restart compiled model reused; no block rebuild/save will run.');
+    else
+        % Keep the loaded model in memory. Never discard unsaved manual sensor/layout edits.
+        try
+            isDirty = strcmpi(get_param(MDL, 'Dirty'), 'on');
+        catch
+            isDirty = false;
+        end
+        if isDirty
+            say('[RunAll]    unsaved model edits detected; saving before setup ...');
+            try
+                save_system(MDL);
+                say('[RunAll]    saved current model edits.');
+            catch ME_save
+                error('RunAll:SaveBeforeReloadFailed', ...
+                    'Could not save the open model; RunAll stopped without closing it. Save manually and retry. Details: %s', ME_save.message);
+            end
+        else
+            say('[RunAll]    reusing the loaded model (no close/reload).');
+        end
+    end
 end
 if ~isempty(userStop)
-    load_system(fullfile(root, [MDL '.slx']));
-    set_param(MDL, 'StopTime', sprintf('%.10g', userStop));   % re-apply: the reload gave back the value saved on disk
-    say('[RunAll]    model Stop Time set to %g s after the reload.', userStop);
+    if ~bdIsLoaded(MDL), load_system(fullfile(root, [MDL '.slx'])); end
+    currentStop = str2double(strtrim(get_param(MDL, 'StopTime')));
+    if ~isfinite(currentStop) || abs(currentStop-userStop) > max(1e-12, 1e-9*abs(userStop))
+        set_param(MDL, 'StopTime', sprintf('%.10g', userStop));
+        say('[RunAll]    model Stop Time updated to %g s.', userStop);
+    else
+        say('[RunAll]    model Stop Time retained at %g s.', userStop);
+    end
 end
 % clear results of an earlier run so they cannot be mistaken for this run
 evalin('base', 'clear EV_BlackBox_log EV_DAQ_Clean EV_DAQ_Raw EV_DAQ_RunDir EV_MakeRef_Name EV_MakeRef_Busy');
 
 %% ---- 6. model fix + DAQ setup (builds + saves EV_BlackBox, does not start) ------------------------
-try
-    if p.Results.Fixes
-        say('[RunAll] 6a. Model fix: buck snubber -> exclude ...');
-        feval(BUILDER, 'Fixes', 1);
+if fastRestartActive
+    say('[RunAll] 6. Fast Restart cache is active: skipped model fixes, block rebuild and save.');
+else
+    % The model's own simulation start performs compilation. During this coordinated RunAll path,
+    % defer helper compile checks so one run does not compile the same Simscape model multiple times.
+    assignin('base','EV_DAQ_DeferCompile',true);
+    try
+        if p.Results.Fixes
+            say('[RunAll] 6a. Model fix: buck snubber -> exclude ...');
+            feval(BUILDER, 'Fixes', 1);
+        end
+        say('[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...');
+        feval(BUILDER, 'Run', false);
+    catch ME
+        evalin('base','clear EV_DAQ_DeferCompile');
+        R = rarec(R, say, 'FAIL', 'DAQ setup', ME.message);
+        result = rafinish(result, R, say, root, stamp, toc(tAll));
+        return
     end
-    say('[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...');
-    feval(BUILDER, 'Run', false);
-catch ME
-    R = rarec(R, say, 'FAIL', 'DAQ setup', ME.message);
-    result = rafinish(result, R, say, root, stamp, toc(tAll));
-    return
+    evalin('base','clear EV_DAQ_DeferCompile');
+    R = rarec(R, say, 'PASS', 'DAQ setup', 'model loaded, Black Box built, hooks written, model saved');
 end
-R = rarec(R, say, 'PASS', 'DAQ setup', 'model loaded, Black Box built, hooks written, model saved');
 
 try
     v = str2double(strtrim(get_param(MDL, 'StopTime')));
@@ -210,7 +269,9 @@ end
 say('[RunAll]    Stop Time of the model for this run: %g s', t_stop);
 
 %% ---- 7. compile check -----------------------------------------------------------------------------
-if p.Results.Compile
+if p.Results.Compile && fastRestartActive
+    say('[RunAll] 7. Compile check skipped: Fast Restart is already initialized/compiled.');
+elseif p.Results.Compile
     say('[RunAll] 7. Compile check (update diagram) ...');
     try
         if ~bdIsLoaded(MDL), load_system(fullfile(root, [MDL '.slx'])); end
@@ -221,18 +282,41 @@ if p.Results.Compile
         result = rafinish(result, R, say, root, stamp, toc(tAll));
         return
     end
+elseif fastRestartActive
+    say('[RunAll] 7. Separate compile check skipped; retaining Fast Restart compiled state.');
 else
     say('[RunAll] 7. Separate compile check skipped (the simulation start compiles the model once; use RunAll(''Compile'',true) to force it).');
 end
 
 %% ---- 8. simulate ------------------------------------------------------------------------------------
+fastRestartEnabled = fastRestartActive;
+if p.Results.FastRestart && ~fastRestartActive
+    try
+        set_param(MDL, 'FastRestart', 'on');
+        fastRestartEnabled = strcmpi(get_param(MDL, 'FastRestart'), 'on');
+        if fastRestartEnabled
+            say('[RunAll] Fast Restart enabled. First run still compiles; repeat runs may reuse the initialized model.');
+        end
+    catch ME_fr
+        fastRestartEnabled = false;
+        R = rarec(R, say, 'WARN', 'Fast Restart', ['Could not enable Fast Restart; using normal simulation: ' ME_fr.message]);
+    end
+elseif fastRestartActive
+    say('[RunAll] Fast Restart already initialized; reusing the compiled model.');
+end
 say('[RunAll] 8. Starting simulation (t_stop = %g s). [LIVE] lines follow ...', t_stop);
 say('--------------------------------------------------------------');
+% Time this call separately: Simulink may spend a long time compiling/initializing
+% before it returns. Previously this interval was omitted from the simulation timer.
+tStartCall = tic;
 set_param(MDL, 'SimulationCommand', 'start');
+startCallWall = toc(tStartCall);
+say('[RunAll]    start-command wall time (compile/startup if blocking): %.1f s', startCallWall);
 tw = tic;  seen = false;  beat = 0;
 while toc(tw) < p.Results.Timeout
     st = get_param(MDL, 'SimulationStatus');
-    if ~strcmpi(st, 'stopped')
+    idleState = strcmpi(st, 'stopped') || (fastRestartEnabled && strcmpi(st, 'initialized'));
+    if ~idleState
         seen = true;
         if toc(tw) - beat >= 5
             beat = toc(tw);
@@ -244,16 +328,18 @@ while toc(tw) < p.Results.Timeout
     elseif toc(tw) > 60
         break
     end
-    pause(0.5);                      % lets the model callbacks (LIVE tap, StopFcn) run
+    pause(0.5);                      % lets model callbacks (LIVE tap, StopFcn) run
 end
 if ~seen
     R = rarec(R, say, 'FAIL', 'Simulation start', 'the simulation never started (see Simulink Diagnostic Viewer)');
     result = rafinish(result, R, say, root, stamp, toc(tAll));
     return
 end
-if ~strcmpi(get_param(MDL, 'SimulationStatus'), 'stopped')
+stEnd = get_param(MDL, 'SimulationStatus');
+idleAtEnd = strcmpi(stEnd, 'stopped') || (fastRestartEnabled && strcmpi(stEnd, 'initialized'));
+if ~idleAtEnd
     set_param(MDL, 'SimulationCommand', 'stop');
-    R = rarec(R, say, 'FAIL', 'Simulation time', sprintf('timeout after %g s - simulation stopped by RunAll', p.Results.Timeout));
+    R = rarec(R, say, 'FAIL', 'Simulation time', sprintf('timeout after %g s - simulation stopped by RunAll (state=%s)', p.Results.Timeout, stEnd));
 end
 pause(2); drawnow;                   % give the StopFcn (data archive) time to start; it runs to completion
 for k = 1:120                        % wait up to ~2 min for the archive data
@@ -280,7 +366,9 @@ C  = evalin('base', 'EV_DAQ_Clean');
 lab = {};
 try, lab = get_param([MDL '/EV_BlackBox'], 'UserData'); catch, end
 if ~iscell(lab) || numel(lab) ~= size(bb.Data, 2)
-    lab = {'Vbatt_V', 'Ibatt_A', 'SOC', 'RPM_rpm', 'Idc_f_A', 'Vdc_m_V', 'omega_wheel', 'Torque_Nm'};
+    def = {'Vbatt_V', 'Ibatt_A', 'SOC', 'RPM_rpm', 'Idc_f_A', 'Vdc_m_V', 'omega_wheel', 'Torque_Nm', 'Tmotor_C', 'Tbatt_C', 'Ibat_sens_A', 'Vbat_sens_V'};
+    nc = size(bb.Data, 2);
+    if nc <= numel(def) && nc >= 7, lab = def(1:nc); end
 end
 V   = @(n) racol(bb, lab, n);
 tb  = bb.Time(:);
@@ -296,7 +384,7 @@ end
 % (a) size and content
 nExp = floor(t_stop / 0.001 + 1e-9) + 1;      % 1 ms samples; a Stop Time that is not a multiple of 1 ms may add the final sample
 [n, m] = size(bb.Data);
-R = rarec(R, say, rapf((n == nExp || n == nExp + 1) && m == 8, 'FAIL'), 'Black Box size', sprintf('%d x %d (expected %d or %d x 8, 1 ms)', n, m, nExp, nExp + 1));
+R = rarec(R, say, rapf((n == nExp || n == nExp + 1) && any(m == [8 9 10]), 'FAIL'), 'Black Box size', sprintf('%d x %d (expected %d or %d rows and 8 baseline / 9-10 optional thermal channels, 1 ms)', n, m, nExp, nExp + 1));
 R = rarec(R, say, rapf(~any(isnan(bb.Data(:))), 'FAIL'), 'Black Box NaN', sprintf('%d NaN values', nnz(isnan(bb.Data(:)))));
 R = rarec(R, say, rapf(abs(tb(end) - t_stop) < 1e-6 || (tb(end) <= t_stop + 1e-9 && t_stop - tb(end) < 0.001 + 1e-9), 'FAIL'), 'Reached t_stop', sprintf('last time = %.4f s', tb(end)));
 
@@ -314,8 +402,9 @@ kt = mean(Tq(w)) / mean(Im(w));
 R = rarec(R, say, rapf(abs(kt - Kt) / Kt <= 0.05, 'WARN'), 'Torque per amp (Kt)', sprintf('%.4f N*m/A (datasheet %.3f, +/-5%%)', kt, Kt));
 R = rarec(R, say, rapf(max(Im) <= 1.1 * I_peak, 'FAIL'), 'Peak motor current', sprintf('max %.1f A (I_peak %g A)', max(Im), I_peak));
 w2 = tb >= t_stop - 0.02;
-R = rarec(R, say, rapf(mean(Im(w2)) <= I_cont, 'WARN'), 'Motor current vs I_cont', ...
-    sprintf('mean of last 20 ms = %.1f A (I_cont %g A; run is short, load only reached 3.18 Nm at 0.28 s)', mean(Im(w2)), I_cont));
+R = rarec(R, say, rapf(mean(Im(w2)) <= I_project_accept, 'WARN'), 'Motor current vs project acceptance limit', ...
+    sprintf('mean of last 20 ms = %.1f A (project limit %.0f A; datasheet continuous rating %.0f A remains separate and unconfirmed for 35 A operation; load reaches 3.18 Nm at 0.28 s)', ...
+    mean(Im(w2)), I_project_accept, I_cont));
 dSOCexp = trapz(tb, abs(Ib)) / 3600 / pack_Ah;
 dSOC    = SOC(1) - SOC(end);
 if dSOCexp > 0
@@ -337,14 +426,52 @@ if all(ismember({'MotorCurrent', 'BatteryVoltage', 'BatteryCurrent', 'RPM'}, vn)
     R = rarec(R, say, rapf(abs(d4) < 0.10,  'WARN'), 'BlackBox vs archive: battery current', ...
         sprintf('%+.1f %%  (BB %.2f A, archive %.2f A; ripple std BB %.2f A, archive %.2f A)', 100*d4, ...
         mean(Ib(w2)), mean(C.BatteryCurrent(mc)), std(Ib(w2)), std(C.BatteryCurrent(mc))));
-    % which one is physically right? buck power balance Vdc*Idc / (Vbatt*Ibatt) should be about 0.85 ... 1.02
-    pBB = mean(Vd(w2) .* Im(w2)) / mean(Vb(w2) .* abs(Ib(w2)));
-    R = rarec(R, say, rapf(pBB >= 0.85 && pBB <= 1.02, 'WARN'), 'Power balance (Black Box)', sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pBB));
+    % DC-link power balance MUST use an independent measured DCLinkCurrent channel.
+    % Idc_f_A / MotorCurrent is a filtered controller estimate, not a conductor measurement.
+    IdcBB = V('DCLinkCurrent_A');
+    if isempty(IdcBB) || ~any(isfinite(IdcBB))
+        R = rarec(R, say, 'WARN', 'Power balance (Black Box)', ...
+            'NOT_AVAILABLE: no finite measured DCLinkCurrent channel; controller estimate intentionally not used');
+    else
+        mbb = w2 & isfinite(Vd) & isfinite(IdcBB) & isfinite(Vb) & isfinite(Ib);
+        if any(mbb) && mean(Vb(mbb).*abs(Ib(mbb))) >= 1
+            pBB = mean(abs(Vd(mbb).*IdcBB(mbb))) / mean(Vb(mbb).*abs(Ib(mbb)));
+            R = rarec(R, say, rapf(pBB >= 0.85 && pBB <= 1.02, 'WARN'), ...
+                'Power balance (Black Box; measured DCLinkCurrent)', ...
+                sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pBB));
+        else
+            R = rarec(R, say, 'WARN', 'Power balance (Black Box)', ...
+                'NOT_AVAILABLE: no aligned finite DCLinkCurrent and battery power samples');
+        end
+    end
+
+    % Archive check: only use a real DCLinkCurrent column; never substitute MotorCurrent.
     pCV = '';
     if ismember('DCLinkVoltage', vn), pCV = 'DCLinkVoltage'; elseif ismember('Vdc', vn), pCV = 'Vdc'; end
-    if ~isempty(pCV)
-        pC = mean(C.(pCV)(mc) .* C.MotorCurrent(mc)) / mean(C.BatteryVoltage(mc) .* abs(C.BatteryCurrent(mc)));
-        R = rarec(R, say, rapf(pC >= 0.85 && pC <= 1.02, 'WARN'), 'Power balance (archive)', sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pC));
+    if ismember('DCLinkCurrent', vn) && ~isempty(pCV) && ...
+            all(ismember({'BatteryVoltage','BatteryCurrent'}, vn))
+        IdcC = C.DCLinkCurrent;
+        VdcC = C.(pCV);
+        if any(isfinite(IdcC(mc)))
+            mC = mc & isfinite(VdcC) & isfinite(IdcC) & ...
+                isfinite(C.BatteryVoltage) & isfinite(C.BatteryCurrent);
+            if any(mC) && mean(C.BatteryVoltage(mC).*abs(C.BatteryCurrent(mC))) >= 1
+                pC = mean(abs(VdcC(mC).*IdcC(mC))) / ...
+                    mean(C.BatteryVoltage(mC).*abs(C.BatteryCurrent(mC)));
+                R = rarec(R, say, rapf(pC >= 0.85 && pC <= 1.02, 'WARN'), ...
+                    'Power balance (archive; measured DCLinkCurrent)', ...
+                    sprintf('Pdc/Pbatt = %.3f (expected 0.85-1.02)', pC));
+            else
+                R = rarec(R, say, 'WARN', 'Power balance (archive)', ...
+                    'NOT_AVAILABLE: no aligned finite DC-link and battery power samples');
+            end
+        else
+            R = rarec(R, say, 'WARN', 'Power balance (archive)', ...
+                'NOT_AVAILABLE: DCLinkCurrent is absent or all NaN in the evaluation window');
+        end
+    else
+        R = rarec(R, say, 'WARN', 'Power balance (archive)', ...
+            'NOT_AVAILABLE: archive lacks measured DCLinkCurrent, DCLinkVoltage/Vdc, or battery power channels');
     end
 else
     R = rarec(R, say, 'WARN', 'BlackBox vs archive', 'archive table has other column names - comparison skipped');
@@ -450,8 +577,8 @@ end
 
 %% ---- 10. Unified graph generation (also invoked by the Simulink StopFcn) ---------------------
 say('[RunAll] 10. Unified Battery/Motor/N4SID graphs ...');
-if logical(rav('EV_DAQ_Fast', false)) || logical(rav('EV_Ref_Skip', false))
- say('[RunAll] Fast mode / EV_Ref_Skip: graph generation skipped.');
+if logical(rav('EV_DAQ_SkipGraphs', false)) || logical(rav('EV_Ref_Skip', false))
+ say('[RunAll] PNG graph generation explicitly skipped (EV_DAQ_SkipGraphs/EV_Ref_Skip).');
 else
  try
   graphDone=false;

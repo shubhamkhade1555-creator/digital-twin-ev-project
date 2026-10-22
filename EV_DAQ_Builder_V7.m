@@ -5,7 +5,7 @@ function EV_DAQ_Builder_V7(varargin)
 % ONE FILE. No helper files are needed any more: EV_SetLoadProfile and the kappa
 % change are built in. BLDCSpeedControlData.m and the model are used as they are.
 %
-% V7.6 (single final file - everything lives here)
+% V7.8 (single final file - independent battery sensor channels prepared for wiring)
 %   EV_DAQ_Builder_V7                     setup (builds LIVE tap + EV_BlackBox, saves the model) and run
 %   EV_DAQ_Builder_V7('RunAll')           model fixes + setup + run + post-process (was EV_Run_All.m)
 %   EV_DAQ_Builder_V7('Fixes', 1..4)      model fixes (was EV_Model_Fixes_V8.m)
@@ -96,6 +96,10 @@ function EV_DAQ_Builder_V7(varargin)
 %          Formatting only - no engineering value is touched.
 %
 % V7.4 PATCH (after the verified run EV_RUN_20261008_163422: 22 of 24 V&V checks PASS, VV-008 / VV-023 FAIL on real physics)
+% FIX-3 OWNER POLICY (approved on 2026-10-22): VV-004 RMS, VV-008 steady average, and VV-023 hold-window
+%   acceptance use separate project limit cfg.vvMotorOperatingCurrent = 35 A. The motor datasheet continuous rating
+%   remains I_cont = 30 A and is explicitly UNCONFIRMED for continuous 35 A operation. Do not change I_cont, the
+%   physical limiter, or VV-022 I^2t budget. VV-003 remains 48 A (45 A limiter + 3 A margin).
 %   FIX-V  LIVE telemetry is an INSTANTANEOUS sample taken at multiples of 0.1 s = exactly 1000 PWM periods, so it always hits the same
 %          carrier phase (same aliasing class as FIX-K). Measured: Ibat LIVE -24.72 A vs 1 ms window mean -12.75 A at t = 0.1 s,
 %          torque 3.43 vs 3.26 Nm. The LIVE line is now labelled "_inst"; 11_Live_Telemetry.xlsx gets the matching 1 ms window means
@@ -249,6 +253,12 @@ if nargin >= 1 && (ischar(varargin{1}) || isstring(varargin{1}))
             evModelFixes(MDL, varargin{2});  return
         case 'runall'     % EV_DAQ_Builder_V7('RunAll'[,'Solver',true][,'Tune',true][,'Run',false])
             evRunAll(MDL, varargin{2:end});  return
+        case 'sensordiscovery'
+            % EV_DAQ_Builder_V7('SensorDiscovery')  read-only: list battery / buck / converter ports
+            % and sensor library paths. Does not add, connect, or save anything.
+            if ~bdIsLoaded(MDL), load_system(MDL); end
+            evBatterySensorDiscovery(MDL);
+            return
         case 'sysid'
             % EV_DAQ_Builder_V7('SysID')   run offline system identification (call after a simulation)
             try, root2 = evalin('base','EV_DAQ_Root'); catch, root2 = evFindRoot(MDL); end
@@ -635,8 +645,12 @@ d = {
  'imotor',      {'log_Idc_f','log_imotor'},    'A',        'Motor',   'Controller estimate max(|iabc|), 2 ms filter (not a DC-link measurement)';
  'vbatt',       {'log_vcell','log_vbatt'},     'V',        'Battery', 'Battery voltage';
  'ibatt',       {'log_icell','log_ibatt'},     'A',        'Battery', 'Battery current';
+ 'ibatt_sens',  {'log_Ibat_sens_A'},           'A',        'Battery', 'Independent physical battery current sensor';
+ 'vbatt_sens',  {'log_Vbat_sens_V'},           'V',        'Battery', 'Independent physical battery terminal voltage sensor';
  'soc',         {'log_soc'},                   '-',        'Battery', 'State of charge';
- 'temperature', {'log_temp','temperature'},    'degC',     'Battery', 'Battery temperature';
+ 'temperature', {'log_temp','log_Tbatt_C','temperature'}, 'degC', 'Battery', 'Battery temperature (per-cell vector or aggregate)';
+ 'battmaxtemp', {'log_TbattMax_C'},              'degC',     'Battery', 'Maximum battery cell temperature';
+ 'motortemp',   {'log_Tmotor_C'},                'degC',     'Motor',   'Motor housing temperature';
  'vdc',         {'log_Vdc_m','log_vdc_m'},     'V',        'DC-Link', 'DC link voltage';
  'omega_wheel', {'log_omega_wheel'},           'as-logged','Vehicle', 'Wheel speed';
 };
@@ -644,7 +658,8 @@ end
 
 function n = evKeySpecName(key)
 m = struct('rpm','RPM','rpm_ref','RPMReference','torque','MotorTorque','imotor','MotorCurrent', ...
-    'vbatt','BatteryVoltage','ibatt','BatteryCurrent','soc','SOC','temperature','BatteryTemperature', ...
+    'vbatt','BatteryVoltage','ibatt','BatteryCurrent','ibatt_sens','BatteryCurrentSensor','vbatt_sens','BatteryVoltageSensor','soc','SOC','temperature','BatteryTemperature', ...
+    'battmaxtemp','BatteryTemperatureMax','motortemp','MotorTemperature', ...
     'vdc','DCLinkVoltage','omega_wheel','WheelSpeed');
 n = m.(key);
 end
@@ -655,9 +670,13 @@ function d = evSpecDefs()
 d = {
  'BatteryVoltage',        'vbatt',      'logged',  'V',   'Battery', 'YES','YES','Battery pack voltage';
  'BatteryCurrent',        'ibatt',      'logged',  'A',   'Battery', 'YES','NO', 'Battery current';
+ 'BatteryCurrentSensor',  'ibatt_sens', 'logged',  'A',   'Battery', 'YES','NO', 'Independent physical battery current sensor; requires sensor block wiring';
+ 'BatteryVoltageSensor',  'vbatt_sens', 'logged',  'V',   'Battery', 'YES','NO', 'Independent physical battery terminal voltage sensor; requires sensor block wiring';
  'BatteryPower',          '',           'derived', 'W',   'Battery', 'YES','NO', 'BatteryVoltage*BatteryCurrent';
  'SOC',                   'soc',        'logged',  '-',   'Battery', 'YES','YES','State of charge';
  'BatteryTemperature',    'temperature','logged',  'degC','Battery', 'YES','NO', 'Battery temperature';
+ 'BatteryTemperatureMax', 'battmaxtemp','logged',  'degC','Battery', 'YES','NO', 'Maximum battery cell temperature';
+ 'MotorTemperature',      'motortemp',  'logged',  'degC','Motor',   'YES','NO', 'Motor housing temperature';
  'DCLinkVoltage',         'vdc',        'logged',  'V',   'DC-Link', 'YES','NO', 'DC link voltage';
  'DCLinkCurrent',         '',           'none',    'A',   'DC-Link', 'YES','NO', 'No DC-link current logged in model';
  'DCLinkPower',           '',           'none',    'W',   'DC-Link', 'NO', 'NO', 'No DC-link current logged in model';
@@ -851,11 +870,12 @@ try
     sub = get_param(zoh,'Parent');
     set_param(sub,'Name','EV_LIVE_Tap');
     set_param([MDL '/EV_LIVE_Tap'],'ShowName','on');
-    stage = 'compile check (update diagram)';
+    stage = 'finish LIVE tap build (defer compile to simulation start)';
     set_param(MDL,'BlockReduction','off');
-    set_param(MDL,'SimulationCommand','update');            % compile check
+    % Compilation is deferred to the single simulation start. Calling update here
+    % causes an expensive Simscape compile that is repeated by RunAll's start.
     ok = true;
-    msg = sprintf('LIVE tap installed (one block, EV_LIVE_Tap): %d signals (%s), ZOH sample time %.3f s.', n, strjoin(src(:,1)',', '), per);
+    msg = sprintf('LIVE tap installed (one block, EV_LIVE_Tap): %d signals (%s), ZOH sample time %.3f s; compile deferred to simulation start.', n, strjoin(src(:,1)',', '), per);
 catch ME
     evRemoveLiveTap(MDL);
     msg = sprintf('LIVE tap NOT installed (model left unchanged). Step: %s. Simulink says: %s', stage, ME.message);
@@ -927,7 +947,7 @@ BB_NAME  = 'EV_BlackBox';
 ZOH_NAME = 'EV_BB_ZOH';
 TW_VAR   = 'EV_BlackBox_log';
 Ts_bb    = 1e-3;                       % 1 kHz log
-BB_TAG   = 'EV_BB_v7_6_lp';            % bump when the BB layout changes: an older BB is then rebuilt
+BB_TAG   = 'EV_BB_v7_8_battery_sensors';       % rebuild existing BB to add optional motor and battery temperature channels
 bbPath   = [MDL '/' BB_NAME];
 
 %% ---- idempotency: keep a healthy existing BB (ZOH present AND every port connected)
@@ -968,6 +988,10 @@ sigs = {
     'Vdc_m_V',     {'Vdc_m'},           'log_Vdc_m',       'V',         '',     0.5e-3;
     'omega_wheel', {'MON_Wheel_Speed'}, 'log_omega_wheel', 'as-logged', '',     0;
     'Torque_Nm',   {'Tq_meas'},         'log_Tq_meas',     'Nm',        '',     0.5e-3;
+    'Tmotor_C',    {'MON_Tmotor_C'},    'log_Tmotor_C',    'degC',      '',     0;
+    'Tbatt_C',     {'MON_Tbatt_C'},     'log_Tbatt_C',     'degC',      '',     0;
+    'Ibat_sens_A', {'MON_Ibat_sens_A'}, 'log_Ibat_sens_A','A',         '',     0;
+    'Vbat_sens_V', {'MON_Vbat_sens_V'}, 'log_Vbat_sens_V','V',         '',     0;
 };
 
 %% ---- inspect every Goto in the model once (only GLOBAL tags are readable from the BB)
@@ -1142,13 +1166,14 @@ try
     stage = 'verify every port is connected';
     bad = evVerifyBlackBox(bbPath);
     if ~isempty(bad), error('EV_DAQ:BB:unconnected','unconnected ports: %s', strjoin(bad,'; ')); end
-    stage = 'compile check (update diagram)';
+    stage = 'finish Black-Box build (defer compile to simulation start)';
     set_param(MDL,'BlockReduction','off');
-    set_param(MDL,'SimulationCommand','update');
+    % Verify connectivity above without compiling. RunAll's simulation start is
+    % the one compile for this run; this avoids compiling once here and again at start.
 
     routes = {plan.route};
     ok  = true;
-    msg = sprintf('EV_BlackBox installed: %d signal(s) (%s); routes: %d tag, %d nested-tap, %d root-inport; ZOH %.4g s; var %s.%s', ...
+    msg = sprintf('EV_BlackBox installed: %d signal(s) (%s); routes: %d tag, %d nested-tap, %d root-inport; ZOH %.4g s; var %s.%s; compile deferred to simulation start', ...
         n, strjoin(labels,', '), nnz(strcmp(routes,'tag')), nnz(strcmp(routes,'tapGoto')), nnz(strcmp(routes,'rootInport')), Ts_bb, TW_VAR, ...
         iif(isempty(skipped),'',[' SKIPPED: ' strjoin(skipped,'; ')]));
 catch ME_bb
@@ -1835,7 +1860,7 @@ TM.VV = toc(t0);   evMem('After V&V');
 %% ---- 12  figures ---------------------------------------------------------
 t0 = tic;
 LG('11/14 Figures');
-if cfg.fast, LG('     FAST mode: figures skipped'); else, LG('     Unified plots deferred until after N4SID identification (step 14c).'); end
+LG('     Unified PNG plots deferred until after N4SID identification (step 14c; retained in FAST mode).');
 TM.Figures = toc(t0);
 
 %% ---- 13  the 12 Excel files ----------------------------------------------
@@ -1851,14 +1876,15 @@ CAT = evCompressionAuditTable(CA, TV, nDupT, nRowsNative, nColsNative);
 
 t0 = tic;
 LG('12/14 Excel reports (12 report files + EV_Master_Data.xlsx)');
-xlOk = true;  infos = {};  CM = table();  CV = table();  PM = [];
+xlOk = NaN;   infos = {};  CM = table();  CV = table();  PM = [];
 if cfg.fast
     LG('     FAST mode: Excel reports skipped (set EV_DAQ_Fast = false for the full 13 workbooks)');
     TM.Excel = 0;
     [~, PM] = evPerformance(runDir, cfg, TM, simWall, toc(tG), CA, tEnd, 4, archDir);
 end
 if ~cfg.fast
-try
+    xlOk = true;
+    try
     % --- 12_Cell_Diagnostics first (its size feeds the memory audit)
     infos{end+1} = evXlsx(runDir, '12_Cell_Diagnostics.xlsx', evSheets12(CD), MAXB);
     CM = evCellMemoryAudit(CD, CA, infos{end}.Bytes);
@@ -1900,7 +1926,11 @@ LG(sprintf('13/14 Reports written; post-processing %.2f s', toc(tG)));
 evMem('After archive');
 finalReport(runID, MDL, tEnd, FR, rawOk, daqOk, cleanOk, auditOk, vvStr, runDir, nWarn, xlOk);
 evPrintPerformance(PM, cfg, TM, CA, vvStr, tEnd, P);
-evPrintExcelStructure(infos, cfg, CA, PM, CM, CV);
+if ~cfg.fast
+    evPrintExcelStructure(infos, cfg, CA, PM, CM, CV);
+else
+    fprintf('[DAQ] FAST mode: Excel structure audit skipped; CSV/text outputs retained.\n');
+end
 LG('14/14 Archive complete');
 
 %% ---- 14b  Black-Box System Identification (V7.5) -----------------------
@@ -1919,7 +1949,7 @@ end
 
 %% ---- 14c unified production graphs (Battery + Motor + N4SID) -----------------------------
 % Single graph source. PASS/FAIL verdicts remain in reports and are not drawn on figures.
-if ~cfg.fast && ~logical(safeBase('EV_Ref_Skip', false))
+if ~logical(safeBase('EV_Ref_Skip', false))
  try
   fprintf('[DAQ] 14c. Unified Battery/Motor/N4SID graphs ...\n');
   if exist('EV_Graphs','file')==2
@@ -1984,15 +2014,16 @@ if ~got
     catch
     end
 end
-% V7.7 FAST MODE: set  EV_DAQ_Fast = true  in the base workspace to skip Excel files, figures and raw-archive
-%       compaction/writing (V&V, logs, black box and 100 ms telemetry still run). Default false = full reports.
+% FAST MODE: EV_DAQ_Fast = true skips Excel workbooks and lossless raw-archive compaction.
+%       Raw/clean CSV, text logs, V&V, Black Box/N4SID and production PNG graphs remain enabled.
 cfg.fast = false;
 try, cfg.fast = logical(evalin('base','EV_DAQ_Fast')); catch, end
 cfg.Ts_live        = 0.1;            % LIVE telemetry period [s of SIMULATION time] (0.3 s run -> 6 lines)
 cfg.maxBytes       = 20*1024*1024;   % every output file must stay below this
 cfg.targetMax_s    = 180;            % 3 minute limit (PASS/FAIL)
 cfg.targetIdeal_s  = 120;            % ideal (2 min)
-cfg.vvPeakCurrent  = 48;             % V&V limit for peak motor current [A] = 45 A limiter + ~3 A overshoot margin (data never modified)
+cfg.vvPeakCurrent  = 48;             % Owner decision: retain VV-003 peak criterion (45 A limiter + ~3 A margin)
+cfg.vvMotorOperatingCurrent = 35;    % Owner-approved project acceptance limit for VV-004/VV-008/VV-023 only; datasheet 30 A continuous rating remains separate/unconfirmed
 cfg.auditMode      = false;          % true: rebuild + compare every column and read files back (slow, debug/audit only)
 cfg.cellVmax       = 4.19;           % cell diagnostics thresholds (diagnostic defaults, listed in 04_VV_Results/Limits)
 cfg.cellVmin       = 2.5;
@@ -2141,7 +2172,7 @@ end
 function [Raw, ri] = buildRaw(S, sigMap)
 % Raw = exactly what was logged, at the native sample times (no scaling,
 % no de-duplication, no interpolation unless a signal has its own time base).
-keys = {'vbatt','ibatt','soc','temperature','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 ri = struct('Cols',struct(),'Resampled',{{}},'SampleCount',struct(),'SampleTime',struct(), ...
             'HasTime',false,'AllLoggedHaveData',true,'PrimaryKey','');
 have = {};
@@ -2184,13 +2215,13 @@ function [R, nDup] = compactRaw(RawFull, ri, P)
 % reduced to BatteryVoltage / BatteryCurrent / SOC (+ SOC_Min / SOC_Max); other signals as logged.
 % Repeated time stamps are collapsed (last sample kept). Per-cell data stays in 02b_Raw_PerCell.csv.
 R = RawFull(:,'Time');
-keys = {'vbatt','ibatt','soc','temperature','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 for k = 1:numel(keys)
     key = keys{k};  cols = ri.Cols.(key);
     if isempty(cols), continue, end
     Y = RawFull{:, cols};
     nm = evKeySpecName(key);
-    if any(strcmp(key,{'vbatt','ibatt','soc'}))
+    if any(strcmp(key,{'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp'}))
         y = normSignal(Y, key, P);
         if strcmp(key,'ibatt'), y = abs(y); end      % POSITIVE-CURRENT
         R.(nm) = y;
@@ -2252,7 +2283,7 @@ tg = (0:1e-3:tEnd)';
 ci.GridRows = numel(tg);
 ci.OutsideRange = 0;  ci.GridNaN = 0;
 V = struct();  logged = struct();
-keys = {'vbatt','ibatt','soc','temperature','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
+keys = {'vbatt','ibatt','ibatt_sens','vbatt_sens','soc','temperature','battmaxtemp','motortemp','vdc','rpm_ref','rpm','torque','imotor','omega_wheel'};
 for k = 1:numel(keys)
     key = keys{k};  cols = ri.Cols.(key);  logged.(key) = ~isempty(cols);
     if isempty(cols), continue; end
@@ -2281,6 +2312,13 @@ if isfield(V, 'ibatt')
         ci.BatteryCurrentSign = 'Positive on discharge -> kept unchanged';
     end
     ci.Notes{end+1} = sprintf('BatteryCurrent sign audit: %s', ci.BatteryCurrentSign);
+end
+if isfield(V, 'ibatt_sens')
+    mean_ibatt_sens = mean(V.ibatt_sens, 'omitnan');
+    if mean_ibatt_sens < 0
+        ci.Notes{end+1} = 'BatteryCurrentSensor sign audit: inverted negative sensor polarity to positive discharge';
+        V.ibatt_sens = -V.ibatt_sens;
+    end
 end
 if ~isfield(V,'rpm_ref') && isfield(V,'rpm')
     V.rpm_ref = min(P.rpm_ramp*tg, P.rpm_ref);  ci.RefDerived = true;
@@ -2332,8 +2370,15 @@ switch key
             y = mean(Y,2,'omitnan')*P.cells_parallel;
             note = sprintf('BatteryCurrent: %d columns, mean cell current x%d (cells_parallel)', nc, P.cells_parallel);
         end
-    case 'temperature'
-        y = mean(Y,2,'omitnan');
+    case {'temperature', 'battmaxtemp', 'motortemp'}
+        if strcmp(key, 'battmaxtemp')
+            y = max(Y,[],2,'omitnan');
+        else
+            y = mean(Y,2,'omitnan');
+        end
+        if median(y,'omitnan') > 200
+            y = y - 273.15; note = sprintf('%s: converted Kelvin to degC (-273.15)', evKeySpecName(key));
+        end
     case 'soc'
         y = mean(Y,2,'omitnan');
         if max(y) > 1.5, y = y/100; note = 'SOC: logged in percent, converted to 0..1'; end
@@ -2345,8 +2390,9 @@ end
 function L = makeLive(C)
 cfgL = evCfg();  tl = (0:cfgL.Ts_live:C.Time(end))';
 L = table(tl,'VariableNames',{'Time'});
-want = {'BatteryVoltage','BatteryCurrent','SOC','BatteryPower','DCLinkVoltage','RPMReference','RPM', ...
-        'MotorTorque','MotorCurrent','WheelSpeed','BatteryTemperature','MotorMechanicalPower','Efficiency'};
+want = {'BatteryVoltage','BatteryCurrent','BatteryCurrentSensor','BatteryVoltageSensor','SOC','BatteryPower','DCLinkVoltage','RPMReference','RPM', ...
+        'MotorTorque','MotorCurrent','WheelSpeed','BatteryTemperature','BatteryTemperatureMax','MotorTemperature', ...
+        'MotorMechanicalPower','Efficiency'};
 for k = 1:numel(want)
     if ismember(want{k}, C.Properties.VariableNames)
         L.(want{k}) = interp1(C.Time, C.(want{k}), tl, 'linear', NaN);
@@ -2497,9 +2543,10 @@ end
 if hd(im)
     pI = max(abs(im),[],'omitnan');  rI = rmsf(im);  ss = max(abs(im(late)),[],'omitnan');
     rows(end+1,:) = vr('VV-003',sprintf('Peak motor current <= %.0f A',P.I_peak_VV),'MotorCurrent','max(|I|)',P.I_peak_VV,pI,pI-P.I_peak_VV,P.I_peak_VV, pI<=P.I_peak_VV); %#ok<AGROW>
-    rows(end+1,:) = vr('VV-004',sprintf('RMS motor current <= %.0f A',P.I_cont),'MotorCurrent','rms(I)',P.I_cont,rI,rI-P.I_cont,P.I_cont, rI<=P.I_cont); %#ok<AGROW>
+    Iop = cfg.vvMotorOperatingCurrent;
+    rows(end+1,:) = vr('VV-004',sprintf('RMS motor current <= %.0f A (project limit; datasheet continuous rating %.0f A unconfirmed for 35 A operation)',Iop,P.I_cont),'MotorCurrent','rms(I)',Iop,rI,rI-Iop,Iop, rI<=Iop); %#ok<AGROW>
     ssm = mean(abs(im(late)),'omitnan');
-    rows(end+1,:) = vr('VV-008',sprintf('Steady-state average current <= %.0f A (V7: average, ripple peaks are limited by VV-003)',P.I_cont),'MotorCurrent','mean(|I|, last 10%)',P.I_cont,ssm,ssm-P.I_cont,P.I_cont, ssm<=P.I_cont); %#ok<AGROW>
+    rows(end+1,:) = vr('VV-008',sprintf('Steady-state average current <= %.0f A project limit (datasheet continuous rating %.0f A; 35 A operation unconfirmed)',Iop,P.I_cont),'MotorCurrent','mean(|I|, last 10%)',Iop,ssm,ssm-Iop,Iop, ssm<=Iop); %#ok<AGROW>
 else
     rows(end+1,:) = na('VV-003','Peak motor current','MotorCurrent'); rows(end+1,:) = na('VV-004','RMS motor current','MotorCurrent'); rows(end+1,:) = na('VV-008','Steady-state current','MotorCurrent'); %#ok<AGROW>
 end
@@ -2548,14 +2595,17 @@ else
     rows(end+1,:) = na('VV-010','SOC at t = 0','SOC'); rows(end+1,:) = na('VV-011','SOC coulomb count','SOC'); %#ok<AGROW>
 end
 % VV-012  battery power against DC-link power (independent check of the battery current)
-pdc = vdc .* im;  pbt = abs(vb .* ib);
+% V8: the DC-link power uses the MEASURED DC-link current only. MotorCurrent (log_Idc_f) is a controller
+% estimate and must not be used as Idc: without a logged DCLinkCurrent the check is NOT_AVAILABLE.
+idcMeas = col(C,'DCLinkCurrent');  haveIdcMeas = any(isfinite(idcMeas));
+pdc = vdc .* idcMeas;  pbt = abs(vb .* ib);
 mk = isfinite(pdc) & isfinite(pbt);
-if any(mk) && mean(pbt(mk)) >= 1
+if haveIdcMeas && any(mk) && mean(pbt(mk)) >= 1
     rb = mean(abs(pdc(mk)))/mean(pbt(mk));
-    rows(end+1,:) = vr('VV-012','Battery power follows the DC-link power: mean|Vdc*Idc| / mean|Vbat*Ibat| (converter efficiency)','BatteryCurrent', ...
+    rows(end+1,:) = vr('VV-012','Battery power follows the DC-link power: mean|Vdc*Idc| / mean|Vbat*Ibat| (measured DCLinkCurrent)','BatteryCurrent', ...
         'mean|Vdc*Idc| / mean|Vbat*Ibat|',sprintf('%.2f..%.2f',cfg.vvPbalance), rb, 0, sprintf('%.2f..%.2f',cfg.vvPbalance), rb >= cfg.vvPbalance(1) && rb <= cfg.vvPbalance(2)); %#ok<AGROW>
 else
-    rows(end+1,:) = na('VV-012','Battery power vs DC-link power','BatteryCurrent'); %#ok<AGROW>
+    rows(end+1,:) = na('VV-012','Battery power vs DC-link power (NOT_AVAILABLE: no measured DCLinkCurrent logged)','BatteryCurrent'); %#ok<AGROW>
 end
 % VV-013 / VV-014  cell voltages
 if nargin >= 3 && ~isempty(CD) && isfield(CD,'OK') && CD.OK && height(CD.Summary) > 0
@@ -2608,18 +2658,18 @@ rows(end+1,:) = vr('VV-022','I^2t above I_cont stays inside the datasheet budget
 mkH = okI & t >= tHold;
 if nnz(mkH) > 5
     ssH = mean(abs(im(mkH)));
-    rows(end+1,:) = vr('VV-023',sprintf('Hold window (t >= %.3f s) mean current <= I_cont = %.0f A (V7.2: phase-separated, VV-008 window overlaps the load ramp)',tHold,P.I_cont), ...
-        'MotorCurrent','mean(|I|, t >= load end)',P.I_cont,ssH,ssH-P.I_cont,P.I_cont, ssH <= P.I_cont); %#ok<AGROW>
+    rows(end+1,:) = vr('VV-023',sprintf('Hold-window mean current <= %.0f A project limit (datasheet continuous rating %.0f A; 35 A operation unconfirmed)',Iop,P.I_cont), ...
+        'MotorCurrent','mean(|I|, t >= load end)',Iop,ssH,ssH-Iop,Iop, ssH <= Iop); %#ok<AGROW>
 else
     rows(end+1,:) = na('VV-023','Hold-window current','MotorCurrent'); %#ok<AGROW>
 end
 mkR = mk & t >= 0.02 & t <= tRamp;            % ramp phase only, startup (first 20 ms) excluded
-if nnz(mkR) > 5
+if haveIdcMeas && nnz(mkR) > 5
     rR = mean(abs(pdc(mkR)))/mean(pbt(mkR));
-    rows(end+1,:) = vr('VV-024','Ramp-phase power balance mean|Vdc*Idc|/mean|Vbat*Ibat| (Idc = 2 ms filtered controller estimate)','BatteryCurrent', ...
+    rows(end+1,:) = vr('VV-024','Ramp-phase power balance mean|Vdc*Idc|/mean|Vbat*Ibat| (measured DCLinkCurrent)','BatteryCurrent', ...
         'ratio, 0.02 s <= t <= ramp end',sprintf('%.2f..%.2f',cfg.vvPbalance),rR,0,sprintf('%.2f..%.2f',cfg.vvPbalance), rR >= cfg.vvPbalance(1) && rR <= cfg.vvPbalance(2)); %#ok<AGROW>
 else
-    rows(end+1,:) = na('VV-024','Ramp-phase power balance','BatteryCurrent'); %#ok<AGROW>
+    rows(end+1,:) = na('VV-024','Ramp-phase power balance (NOT_AVAILABLE: no measured DCLinkCurrent logged)','BatteryCurrent'); %#ok<AGROW>
 end
 % ---------------- V7.1: limits judged on the RAW 10 us data (Ts = 1e-5) (averaging must never hide a limit violation) ----------------
 if nargin >= 4 && istable(Raw) && all(ismember({'BatteryCurrent','BatteryVoltage'}, Raw.Properties.VariableNames))
@@ -2812,7 +2862,9 @@ R = {mrow('Voltage min',min(vb,[],'omitnan'),'V','');
      mrow('Initial SOC',s0,'-','');
      mrow('Final SOC',s1,'-','');
      mrow('SOC change',s1-s0,'-','final - initial');
-     mrow('Temperature mean',mean(tmp,'omitnan'),'degC','NOT_AVAILABLE (not logged)')};
+     mrow('Temperature mean',mean(tmp,'omitnan'),'degC',iif(any(isfinite(tmp)),'logged signal','NOT_AVAILABLE (not logged)'));
+     mrow('Temperature maximum',max(tmp,[],'omitnan'),'degC',iif(any(isfinite(tmp)),'logged signal','NOT_AVAILABLE (not logged)'));
+     mrow('Maximum cell temperature (dedicated channel)',max(col(C,'BatteryTemperatureMax'),[],'omitnan'),'degC',iif(any(isfinite(col(C,'BatteryTemperatureMax'))),'logged signal','NOT_AVAILABLE (not logged)'))};
 T = mtab(R);
 end
 
@@ -2888,6 +2940,8 @@ sf('Speed.png',           @() plotSet(t, {col(C,'RPMReference'),col(C,'RPM')}, {
 sf('Battery_Voltage.png', @() plotSet(t, {col(C,'BatteryVoltage')}, {'Battery voltage'}, 'Battery Voltage vs Time', 'Voltage [V]'));
 sf('Battery_Current.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
 sf('Battery_Current_Corrected.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
+sf('Battery_Voltage_Sensor_Comparison.png', @() plotSet(t, {col(C,'BatteryVoltage'),col(C,'BatteryVoltageSensor')}, {'Existing battery voltage log','Physical voltage sensor'}, 'Battery Voltage: Existing Log vs Physical Sensor', 'Voltage [V]'));
+sf('Battery_Current_Sensor_Comparison.png', @() plotSet(t, {col(C,'BatteryCurrent'),col(C,'BatteryCurrentSensor')}, {'Existing battery current log','Physical current sensor'}, 'Battery Current: Existing Log vs Physical Sensor', 'Current [A]'));
 sf('Motor_Current.png',   @() plotSet(t, {col(C,'MotorCurrent')}, {'Motor current (log_Idc_f)'}, 'Motor Current vs Time', 'Current [A]'));
 sf('SOC.png',             @() plotSet(t, {col(C,'SOC')}, {'SOC'}, 'State of Charge vs Time', 'SOC [0..1]'));
 sf('DC_Link.png',         @() plotSet(t, {col(C,'DCLinkVoltage')}, {'DC-link voltage'}, 'DC-Link Voltage vs Time', 'DC-Link Voltage [V]'));
@@ -2948,7 +3002,14 @@ fprintf('\n====================================================\nEV DIGITAL TWIN
 fl('RUN ID', runID);  fl('MODEL', MDL);  fl('SIMULATION TIME', [f2(simDur) ' s']);  fprintf('\n');
 fl('DATA ACQUISITION', pf(daqOk));  fl('RAW DATA', pf(rawOk));  fl('DATA CLEANING', pf(cleanOk));
 fl('LOGGING AUDIT', [pf(auditOk) sprintf('  (%d warning(s), details in 05_Logging_Audit.csv)', nWarn)]);
-fl('EXCEL REPORT', iif(xlOk,'PASS','FAIL'));  fl('V&V', vv);  fprintf('\n');
+if isnumeric(xlOk) && isscalar(xlOk) && isnan(xlOk)
+    excelStatus = 'SKIPPED (FAST MODE)';
+elseif logical(xlOk)
+    excelStatus = 'PASS';
+else
+    excelStatus = 'FAIL';
+end
+fl('EXCEL REPORT', excelStatus);  fl('V&V', vv);  fprintf('\n');
 fl('FINAL RPM', [f2(FR.FinalRPM) ' rpm']);  fl('PEAK RPM', [f2(FR.PeakRPM) ' rpm']);
 fl('MOTOR CURRENT PEAK', [f2(FR.MotorCurrentPeak) ' A']);  fl('MOTOR CURRENT RMS', [f2(FR.MotorCurrentRMS) ' A']);
 fl('BATTERY CURRENT', [f2(FR.BatteryCurrent) ' A']);  fl('BATTERY VOLTAGE', [f2(FR.BatteryVoltage) ' V']);
@@ -3826,6 +3887,11 @@ id = VVT.RequirementID;
 sub = @(l) VVT(ismember(id, l),:);
 summ = [VVT(:,{'RequirementID','Requirement','Status'}); cell2table({'OVERALL','Overall V&V status',vvStr}, 'VariableNames', {'RequirementID','Requirement','Status'})];
 lim = VVT(:,{'RequirementID','Requirement','Expected','Limit'});
+% Owner-approved motor-current policy: project threshold is not a datasheet rating.
+policyRows = {'POLICY-I30','Motor datasheet continuous-current rating','30 A','UNCONFIRMED for continuous operation at 35 A'; ...
+              'POLICY-I35','Project acceptance limit for VV-004 / VV-008 / VV-023','35 A','Owner approved; project criterion only'; ...
+              'POLICY-IPEAK','VV-003 peak-current acceptance criterion','48 A','Retained by owner; 45 A limiter + 3 A margin'};
+lim = [lim; cell2table(policyRows,'VariableNames',lim.Properties.VariableNames)];
 if isfield(CD,'th') && isstruct(CD.th)
     th = CD.th;
     cr = {'CELL-001','Cell voltage max (diagnostic threshold)',   '-', n2s(th.vMax); ...
@@ -3917,8 +3983,8 @@ end
 
 function sh = evSheets07(GrpT, LT13)
 L = {'Battery',{'BatteryVoltage','BatteryCurrent','BatteryPower','SOC'}; 'DC_Link',{'DCLinkVoltage','DCLinkCurrent','DCLinkPower'}; ...
-     'Motor',{'RPM','MotorTorque','MotorMechanicalPower','MotorCurrent','Efficiency'}; 'Vehicle',{'WheelSpeed'}; ...
-     'Controller',{'RPMReference','SpeedError'}; 'Thermal',{'BatteryTemperature'}};
+     'Motor',{'RPM','MotorTorque','MotorMechanicalPower','MotorCurrent','MotorTemperature','Efficiency'}; 'Vehicle',{'WheelSpeed'}; ...
+     'Controller',{'RPMReference','SpeedError'}; 'Thermal',{'BatteryTemperature','BatteryTemperatureMax','MotorTemperature'}};
 sh = cell(size(L,1)+1, 2);
 for k = 1:size(L,1)
     sh(k,:) = {L{k,1}, GrpT(ismember(GrpT.Signal, L{k,2}),:)};
@@ -4073,6 +4139,8 @@ defs = {'Battery_Voltage_V','BatteryVoltage',1,'logged'; 'Battery_Current_A','Ba
         'Battery_Power_W','BatteryPower',1,'DERIVED'; 'DC_Link_Voltage_V','DCLinkVoltage',1,'logged'; 'DC_Link_Current_A','DCLinkCurrent',1,'logged'; ...
         'RPM_Reference_rpm','RPMReference',1,iif(ci.RefDerived,'DERIVED','logged'); 'Motor_RPM_rpm','RPM',1,'logged'; ...
         'Motor_Torque_Nm','MotorTorque',1,'logged'; 'Motor_Current_A','MotorCurrent',1,'logged'; ...
+        'Battery_Temperature_C','BatteryTemperature',1,'logged'; 'Battery_Temperature_Max_C','BatteryTemperatureMax',1,'logged'; ...
+        'Motor_Temperature_C','MotorTemperature',1,'logged'; ...
         'Phase_A_Current_A','PhaseCurrentA',1,'logged'; 'Phase_B_Current_A','PhaseCurrentB',1,'logged'; 'Phase_C_Current_A','PhaseCurrentC',1,'logged'; ...
         'Wheel_Speed_as_logged','WheelSpeed',1,'logged'; 'Vehicle_Speed_m_s','VehicleSpeed',1,'logged'; ...
         'Mechanical_Power_W','MotorMechanicalPower',1,'DERIVED'; 'Efficiency_percent','Efficiency',1,'DERIVED'};
@@ -4253,8 +4321,12 @@ for k = 1:size(specs,1)
     end
 end
 if isempty(done), return, end
+if logical(safeBase('EV_DAQ_DeferCompile', false))
+    for k = 1:numel(done), fprintf('[DAQ]   %s -> pack-level value; compile deferred until RunAll simulation start.\n', strrep(done{k},[MDL '/'],'')); end
+    return
+end
 try
-    set_param(MDL,'SimulationCommand','update');                    % compile check
+    set_param(MDL,'SimulationCommand','update');                    % compile check for stand-alone setup
     for k = 1:numel(done), fprintf('[DAQ]   %s -> pack-level value (compile check passed).\n', strrep(done{k},[MDL '/'],'')); end
 catch ME
     for k = 1:numel(done), try, set_param(done{k},'Gain',g0{k},'Multiplication',m0{k}); catch, end, end
@@ -4294,13 +4366,17 @@ switch step
                 set_param(blk,'snubber_type',old);
                 error('snubber_type NOT set (readback "%s", warning "%s"). Original restored.', got, wm);
             end
-            try
-                set_param(MDL,'SimulationCommand','update');            % compile check
-            catch ME
-                set_param(blk,'snubber_type',old);
-                error('Model does not compile with snubber_type = exclude, original restored: %s', ME.message);
+            if logical(safeBase('EV_DAQ_DeferCompile', false))
+                fprintf('snubber_type now   : %s (compile deferred until RunAll simulation start)\n', get_param(blk,'snubber_type'));
+            else
+                try
+                    set_param(MDL,'SimulationCommand','update');            % compile check for stand-alone fix
+                catch ME
+                    set_param(blk,'snubber_type',old);
+                    error('Model does not compile with snubber_type = exclude, original restored: %s', ME.message);
+                end
+                fprintf('snubber_type now   : %s (compile check passed)\n', get_param(blk,'snubber_type'));
             end
-            fprintf('snubber_type now   : %s (compile check passed)\n', get_param(blk,'snubber_type'));
         end
     case 2
         sc = [MDL '/Solver' newline 'Configuration'];
@@ -4347,7 +4423,26 @@ if bdIsLoaded(MDL)
     end
     userStop = p.Results.StopTime;
     if isempty(userStop), userStop = evStopTime(MDL); end          % V7.8: the value typed in the toolbar
-    close_system(MDL,0);                       % reload from disk
+    % Preserve manual layout edits (e.g., battery current/voltage sensors) before reload.
+    % Only rebuild-owned EV_LIVE_* and EV_BlackBox/BB_TapGoto_* items are managed below.
+    try
+        isDirty = strcmpi(get_param(MDL,'Dirty'),'on');
+    catch
+        isDirty = false;
+    end
+    if isDirty
+        fprintf('[DAQ] Unsaved model edits detected; saving before reload ...\\n');
+        try
+            save_system(MDL);
+            fprintf('[DAQ] Current model layout saved.\\n');
+        catch ME_save
+            error('EV_DAQ:SaveBeforeReloadFailed', ...
+                'Could not save the open model; it was not closed. Save the model manually and retry. Details: %s', ME_save.message);
+        end
+    else
+        fprintf('[DAQ] Open model has no unsaved layout edits.\\n');
+    end
+    close_system(MDL,0);                       % safe now: dirty layout changes were saved first
     load_system(fullfile(root,[MDL '.slx']));
     if isfinite(userStop) && userStop > 0, set_param(MDL,'StopTime',sprintf('%.10g',userStop)); fprintf('[DAQ] Stop Time kept: %g s\n', userStop); end
 elseif ~isempty(p.Results.StopTime)
@@ -4360,3 +4455,74 @@ fprintf('--- DAQ setup (builds + saves EV_BlackBox) %s ---\n', iif(p.Results.Run
 feval(mfilename, 'Run', p.Results.Run);
 end
 
+
+function evBatterySensorDiscovery(MDL)
+% Read-only inspection of battery, buck and converter ports, plus sensor library paths.
+% Does not alter, connect, or save the model.
+fprintf('\n=== EV BATTERY SENSOR PORT DISCOVERY ===\n');
+fprintf('Model: %s\n', MDL);
+fprintf('File: %s\n', get_param(MDL, 'FileName'));
+fprintf('Stop Time: %s s\n', get_param(MDL, 'StopTime'));
+
+allBlocks = find_system(MDL, 'SearchDepth', 1, 'Type', 'Block');
+for k = 1:numel(allBlocks)
+    try
+        nm = get_param(allBlocks{k}, 'Name');
+        if contains(lower(nm), 'battery') || contains(lower(nm), 'buck') || ...
+           contains(lower(nm), 'sensor') || contains(lower(nm), 'converter')
+            fprintf('\nBLOCK: %s\n', allBlocks{k});
+            fprintf('  BlockType: %s\n', get_param(allBlocks{k}, 'BlockType'));
+            % ReferenceBlock exists only on library-linked blocks (not SubSystems).
+            try
+                fprintf('  ReferenceBlock: %s\n', get_param(allBlocks{k}, 'ReferenceBlock'));
+            catch
+                fprintf('  ReferenceBlock: (none)\n');
+            end
+            ph = get_param(allBlocks{k}, 'PortHandles');
+            portGroups = {'LConn','RConn','Inport','Outport'};
+            for g = 1:numel(portGroups)
+                field = portGroups{g};
+                if ~isfield(ph, field), continue; end
+                for j = 1:numel(ph.(field))
+                    p = ph.(field)(j);
+                    fprintf('  %s(%d), handle=%g', field, j, p);
+                    try
+                        ln = get_param(p, 'Line');
+                        if isnumeric(ln) && ln > 0
+                            fprintf(', line=%g', ln);
+                        else
+                            fprintf(', unconnected');
+                        end
+                    catch
+                    end
+                    fprintf('\n');
+                end
+            end
+        end
+    catch ME
+        fprintf('Inspection warning: %s\n', ME.message);
+    end
+end
+
+fprintf('\n=== LIBRARY BLOCK SEARCH ===\n');
+libs = {'ee_lib', 'fl_lib', 'nesl_utility'};
+for k = 1:numel(libs)
+    try
+        load_system(libs{k});
+        fprintf('\nLibrary loaded: %s\n', libs{k});
+        candidates = find_system(libs{k}, 'LookUnderMasks', 'all', 'FollowLinks', 'on', 'Type', 'Block');
+        for j = 1:numel(candidates)
+            nm = get_param(candidates{j}, 'Name');
+            if contains(lower(nm), 'current sensor') || contains(lower(nm), 'voltage sensor') || ...
+               contains(lower(nm), 'ps-simulink converter')
+                fprintf('  %s\n', candidates{j});
+            end
+        end
+    catch ME
+        fprintf('Could not inspect %s: %s\n', libs{k}, ME.message);
+    end
+end
+
+fprintf('\n=== END OF READ-ONLY DISCOVERY ===\n');
+fprintf('No blocks were added, removed, connected, or saved.\n');
+end
