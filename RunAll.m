@@ -211,6 +211,9 @@ end
 evalin('base', 'clear EV_BlackBox_log EV_DAQ_Clean EV_DAQ_Raw EV_DAQ_RunDir EV_MakeRef_Name EV_MakeRef_Busy');
 
 %% ---- 6. model fix + DAQ setup (builds + saves EV_BlackBox, does not start) ------------------------
+% The model's own simulation start performs compilation. During this coordinated RunAll path,
+% defer helper compile checks so one run does not compile the same Simscape model multiple times.
+assignin('base','EV_DAQ_DeferCompile',true);
 try
     if p.Results.Fixes
         say('[RunAll] 6a. Model fix: buck snubber -> exclude ...');
@@ -219,10 +222,12 @@ try
     say('[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...');
     feval(BUILDER, 'Run', false);
 catch ME
+    evalin('base','clear EV_DAQ_DeferCompile');
     R = rarec(R, say, 'FAIL', 'DAQ setup', ME.message);
     result = rafinish(result, R, say, root, stamp, toc(tAll));
     return
 end
+evalin('base','clear EV_DAQ_DeferCompile');
 R = rarec(R, say, 'PASS', 'DAQ setup', 'model loaded, Black Box built, hooks written, model saved');
 
 try
