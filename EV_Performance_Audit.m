@@ -185,6 +185,16 @@ for k = 1:numel(blocks)
 end
 add('INFO','Blocks with explicit SampleTime',num2str(numel(sampleBlocks)), ...
     'The audit lists only exposed block parameters and does not propagate compiled sample times.');
+if ~isempty(sampleVals)
+    [sampleKinds,~,sampleGroup] = unique(sampleVals);
+    sampleCounts = accumarray(sampleGroup,1);
+    [sampleCounts,sortOrder] = sort(sampleCounts,'descend');
+    for k = 1:min(30,numel(sortOrder))
+        j = sortOrder(k);
+        add('INFO','SampleTime frequency',sampleKinds{j}, ...
+            sprintf('%d block(s) expose this SampleTime value. This is not compiled-rate propagation.',sampleCounts(k)));
+    end
+end
 for k = 1:min(numel(solverConfigBlocks),30)
     b = solverConfigBlocks{k};
     val = {};
