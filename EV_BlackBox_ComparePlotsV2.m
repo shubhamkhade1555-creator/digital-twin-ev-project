@@ -9,8 +9,9 @@ function R = EV_BlackBox_ComparePlotsV2(Clean, runDir)
 % Generates source-labelled figures under <runDir>/Figures_BlackBox_V2:
 %   Battery: simulation voltage/current/SOC/temperature/cell voltage if available
 %   Motor: reference vs actual RPM, motor current, torque, DC-link voltage
-%   SystemIdentification: validation measured-vs-1-step/free-run predictions,
-%                        residuals, plus a metrics CSV.
+%   SystemIdentification: battery voltage/current/SOC/temperature/cell-voltage signal traces,
+%                        voltage/current measured-vs-1-step/free-run predictions, residuals,
+%                        model-order fit comparison, plus a metrics CSV.
 %
 % The identified model in this project predicts ONLY battery voltage and
 % battery current from RPM and MotorCurrent. SOC is Coulomb-counted outside
@@ -118,8 +119,33 @@ created = addSeriesPlot(C, t, dirs{2}, created, ...
     {'DCLinkVoltage','Vdc','DC_Link_Voltage'}, 'DCLinkVoltage_Simulation.png', ...
     'DC-link voltage - Simulink plant', 'Voltage [V]');
 
+% System Identification channel coverage.
+% Plot all requested battery signals in this folder when they exist in the
+% cleaned run data. For SOC, temperature and cell voltage these are measured/
+% simulated channel traces only unless a compatible identified output exists.
+created = addSeriesPlot(C, t, dirs{3}, created, ...
+    {'BatteryVoltage','Vbatt_V','Vbat'}, 'SysID_BatteryVoltage_Signal.png', ...
+    'System Identification input data - battery voltage', 'Voltage [V]');
+created = addSeriesPlot(C, t, dirs{3}, created, ...
+    {'BatteryCurrent','Ibatt_A','Ibat'}, 'SysID_BatteryCurrent_Signal.png', ...
+    'System Identification input data - battery current', 'Current [A]');
+created = addSeriesPlot(C, t, dirs{3}, created, ...
+    {'SOC','StateOfCharge','BatterySOC','SOC_pct','SOC_percent'}, 'SysID_BatterySOC_Signal.png', ...
+    'System Identification channel - battery SOC (source units)', 'SOC [source units]');
+created = addSeriesPlot(C, t, dirs{3}, created, ...
+    {'BatteryTemperature','BatteryTemp','Battery_Temperature','Temperature','Cell_Temperature','CellTemperature'}, ...
+    'SysID_BatteryTemperature_Signal.png', ...
+    'System Identification channel - battery temperature (logged only)', 'Temperature [deg C]');
+created = addSeriesPlot(C, t, dirs{3}, created, ...
+    {'CellVoltage','BatteryCellVoltage','Vcell','CellVoltageMean','MeanCellVoltage','MaxCellVoltage'}, ...
+    'SysID_CellVoltage_Signal.png', ...
+    'System Identification channel - cell voltage (logged only)', 'Voltage [V]');
+
 % System Identification validation: use the normalized validation data stored
 % by EV_SysID_Auto. compare() predictions are converted back to physical units.
+% The currently saved identified model predicts battery voltage/current only.
+% SOC, temperature and cell voltage are not model predictions unless a future
+% multi-output model is trained and saved with those output channels.
 modelFile = fullfile(runDir, 'EV_BlackBox_SysID.mat');
 if isfile(modelFile)
     S = load(modelFile);
@@ -216,8 +242,8 @@ fid = fopen(fullfile(outRoot,'PLOT_MANIFEST.txt'),'w');
 if fid >= 0
     fprintf(fid,'EV Black-Box Comparison Plots V2\nRun folder: %s\n', runDir);
     fprintf(fid,'Generated: %s\n', char(datetime('now')));
-    fprintf(fid,'Model outputs available in this SysID workflow: battery voltage and battery current.\n');
-    fprintf(fid,'SOC is outside the linear model; temperature is plotted only if logged.\n');
+    fprintf(fid,'SysID signal traces: battery voltage, current, SOC, temperature and cell voltage when present in cleaned data.\n');
+    fprintf(fid,'Current identified model predictions/residuals: battery voltage and current only. SOC/temperature/cell voltage traces are logged channels, not model predictions.\n');
     fprintf(fid,'Motor RPM/current/torque are plant signals; this model does not predict them.\n\nFiles:\n');
     for k = 1:numel(created), fprintf(fid,'%s\n',created{k}); end
     fclose(fid);
