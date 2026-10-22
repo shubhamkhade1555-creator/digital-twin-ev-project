@@ -256,7 +256,12 @@ end
 %% ---- 8. simulate ------------------------------------------------------------------------------------
 say('[RunAll] 8. Starting simulation (t_stop = %g s). [LIVE] lines follow ...', t_stop);
 say('--------------------------------------------------------------');
+% Time this call separately: Simulink may spend a long time compiling/initializing
+% before it returns. Previously this interval was omitted from the simulation timer.
+tStartCall = tic;
 set_param(MDL, 'SimulationCommand', 'start');
+startCallWall = toc(tStartCall);
+say('[RunAll]    start-command wall time (compile/startup if blocking): %.1f s', startCallWall);
 tw = tic;  seen = false;  beat = 0;
 while toc(tw) < p.Results.Timeout
     st = get_param(MDL, 'SimulationStatus');
