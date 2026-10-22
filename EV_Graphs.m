@@ -102,7 +102,7 @@ f=fullfile(runDir,'EV_BlackBox_SysID.mat');if ~isfile(f),out.warnings{end+1}='Ba
 S=load(f);if ~all(isfield(S,{'sys_blackbox','Zv','Ys','Y0'})),out.warnings{end+1}='Battery N4SID: saved model missing validation fields';return,end
 try
  [p1,fit1]=compare(S.Zv,S.sys_blackbox,1);[pf,fitf]=compare(S.Zv,S.sys_blackbox,Inf);y=S.Zv.OutputData.*S.Ys+S.Y0;y1=p1.OutputData.*S.Ys+S.Y0;yf=pf.OutputData.*S.Ys+S.Y0;
- tt=S.Zv.SamplingInstants;if isempty(tt),tt=(0:size(y,1)-1)'*S.Zv.Ts;end;nm={'Battery voltage','Battery current'};un={'V','A'};
+ tt=S.Zv.SamplingInstants;if isempty(tt),tt=(0:size(y,1)-1)'*S.Zv.Ts;end;tt=tt(:);if isfield(S,'Ze')&&~isempty(tt)&&tt(1)<S.Zv.Ts,tt=tt+size(S.Ze.OutputData,1)*S.Zv.Ts;end;nm={'Battery voltage','Battery current'};un={'V','A'};
  for k=1:min(2,size(y,2))
   out=three(tt,y(:,k),y1(:,k),yf(:,k),r,'N4SID_Battery',[nm{k} ' measured vs N4SID predictions'],sprintf('S%d_Compare',k),un{k},out);
   e=y(:,k)-yf(:,k);out=draw(tt,e,r,'N4SID_Battery',[nm{k} ' free-run residual'],['Residual (' un{k} ')'],sprintf('S%d_Residuals',k+2),out);
