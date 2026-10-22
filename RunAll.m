@@ -182,8 +182,27 @@ if bdIsLoaded(MDL)
     if ~strcmpi(get_param(MDL, 'SimulationStatus'), 'stopped')
         error('RunAll:running', 'Model %s is still running. Press STOP, wait for Ready, then run again.', MDL);
     end
-    close_system(MDL, 0);      % reload from disk so every group member runs the file as saved
-    say('[RunAll]    closed the old copy of %s (reload from disk).', MDL);
+    % Preserve manual layout edits (for example, physical battery current/voltage sensors)
+    % before reloading the model. Never close an unsaved model and silently discard edits.
+    try
+        isDirty = strcmpi(get_param(MDL, 'Dirty'), 'on');
+    catch
+        isDirty = false;
+    end
+    if isDirty
+        say('[RunAll]    unsaved model edits detected; saving layout before reload ...');
+        try
+            save_system(MDL);
+            say('[RunAll]    saved current model edits.');
+        catch ME_save
+            error('RunAll:SaveBeforeReloadFailed', ...
+                'Could not save the open model, so RunAll stopped without closing it. Save the model manually and retry. Details: %s', ME_save.message);
+        end
+    else
+        say('[RunAll]    open model has no unsaved edits.');
+    end
+    close_system(MDL, 0);      % safe now: dirty layout changes were saved first
+    say('[RunAll]    reloading saved model %s.', MDL);
 end
 if ~isempty(userStop)
     load_system(fullfile(root, [MDL '.slx']));
