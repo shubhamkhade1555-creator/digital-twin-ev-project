@@ -160,7 +160,8 @@ for k = 1:numel(blocks)
     bn = '';
     try, bn = get_param(b,'Name'); catch, end
     lowName = lower([b ' ' bn]);
-    if contains(lowName,'solver configuration')
+    lowName = regexprep(lowName,'[\r\n]+',' ');
+    if contains(lowName,'solver configuration') || contains(lowName,'solverconfiguration')
         solverConfigBlocks{end+1,1} = b; %#ok<AGROW>
     end
     if contains(lowName,'pwm') || contains(lowName,'pulse generator') || ...
