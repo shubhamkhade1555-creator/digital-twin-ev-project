@@ -870,11 +870,12 @@ try
     sub = get_param(zoh,'Parent');
     set_param(sub,'Name','EV_LIVE_Tap');
     set_param([MDL '/EV_LIVE_Tap'],'ShowName','on');
-    stage = 'compile check (update diagram)';
+    stage = 'finish LIVE tap build (defer compile to simulation start)';
     set_param(MDL,'BlockReduction','off');
-    set_param(MDL,'SimulationCommand','update');            % compile check
+    % Compilation is deferred to the single simulation start. Calling update here
+    % causes an expensive Simscape compile that is repeated by RunAll's start.
     ok = true;
-    msg = sprintf('LIVE tap installed (one block, EV_LIVE_Tap): %d signals (%s), ZOH sample time %.3f s.', n, strjoin(src(:,1)',', '), per);
+    msg = sprintf('LIVE tap installed (one block, EV_LIVE_Tap): %d signals (%s), ZOH sample time %.3f s; compile deferred to simulation start.', n, strjoin(src(:,1)',', '), per);
 catch ME
     evRemoveLiveTap(MDL);
     msg = sprintf('LIVE tap NOT installed (model left unchanged). Step: %s. Simulink says: %s', stage, ME.message);
@@ -1165,9 +1166,10 @@ try
     stage = 'verify every port is connected';
     bad = evVerifyBlackBox(bbPath);
     if ~isempty(bad), error('EV_DAQ:BB:unconnected','unconnected ports: %s', strjoin(bad,'; ')); end
-    stage = 'compile check (update diagram)';
+    stage = 'finish Black-Box build (defer compile to simulation start)';
     set_param(MDL,'BlockReduction','off');
-    set_param(MDL,'SimulationCommand','update');
+    % Verify connectivity above without compiling. RunAll's simulation start is
+    % the one compile for this run; this avoids compiling once here and again at start.
 
     routes = {plan.route};
     ok  = true;
