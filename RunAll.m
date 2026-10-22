@@ -297,7 +297,7 @@ end
 % (a) size and content
 nExp = floor(t_stop / 0.001 + 1e-9) + 1;      % 1 ms samples; a Stop Time that is not a multiple of 1 ms may add the final sample
 [n, m] = size(bb.Data);
-R = rarec(R, say, rapf((n == nExp || n == nExp + 1) && m == 8, 'FAIL'), 'Black Box size', sprintf('%d x %d (expected %d or %d x 8, 1 ms)', n, m, nExp, nExp + 1));
+R = rarec(R, say, rapf((n == nExp || n == nExp + 1) && any(m == [8 10]), 'FAIL'), 'Black Box size', sprintf('%d x %d (expected %d or %d rows and 8 baseline / 10 thermal channels, 1 ms)', n, m, nExp, nExp + 1));
 R = rarec(R, say, rapf(~any(isnan(bb.Data(:))), 'FAIL'), 'Black Box NaN', sprintf('%d NaN values', nnz(isnan(bb.Data(:)))));
 R = rarec(R, say, rapf(abs(tb(end) - t_stop) < 1e-6 || (tb(end) <= t_stop + 1e-9 && t_stop - tb(end) < 0.001 + 1e-9), 'FAIL'), 'Reached t_stop', sprintf('last time = %.4f s', tb(end)));
 
