@@ -25,7 +25,7 @@ function result = RunAll(varargin)
 %   STEP 10: unified Battery, Motor and N4SID graph generation through EV_Graphs.m.
 %     RunAll and the model StopFcn use the same graph source; duplicate generation is avoided.
 %     Figures are saved under each run's Figures\Battery, Figures\Motor,
-%     Figures\N4SID_Battery and Figures\N4SID_Motor folders. PNG (300 dpi) only; PDF export is disabled.
+%     Figures\N4SID_Battery and Figures\N4SID_Motor folders. PNG (300 dpi) only.
 %     PASS/FAIL verdicts remain in text/CSV reports and are not written on graphs.
 %
 %   RunAll does NOT change any physics or parameter. It only calls the existing project files.
