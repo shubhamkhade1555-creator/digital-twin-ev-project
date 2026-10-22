@@ -112,6 +112,7 @@ try
  end
  if isfield(S,'sweep')&&size(S.sweep,2)>=8,sw=S.sweep;ff=figure('Visible','off','Color','w');aa=axes(ff);plot(aa,sw(:,1),sw(:,7),'o-','LineWidth',1.8);hold(aa,'on');plot(aa,sw(:,1),sw(:,8),'s-','LineWidth',1.8);grid(aa,'on');xlabel(aa,'State order');ylabel(aa,'Free-run RMSE');title(aa,'Battery N4SID model-order comparison');legend(aa,{'Voltage RMSE (V)','Current RMSE (A)'});out=saveFig(ff,r,'N4SID_Battery','S05_Model_Order',out);end
  fprintf('[EV_Graphs] Battery N4SID fit one-step=%s; free-run=%s\n',mat2str(fit1,3),mat2str(fitf,3));
+ out=fitPlot(fit1,fitf,r,'N4SID_Battery','Battery N4SID validation fit','S06_Validation_Fit',{'Voltage','Current'},out);
 catch ME,out.warnings{end+1}=['Battery N4SID plot issue: ' ME.message];end
 end
 function out=motorID(T,t,runDir,r,out)
@@ -127,7 +128,8 @@ if isempty(best),out.warnings{end+1}='Motor N4SID: no stable candidate model';re
 for k=1:3,out=three(tv,yt(:,k),a(:,k),bb(:,k),r,'N4SID_Motor',[nm{k} ' measured vs N4SID predictions'],sprintf('S%d_%s_Compare',10+k,short{k}),un{k},out);er=yt(:,k)-bb(:,k);out=draw(tv,er,r,'N4SID_Motor',[nm{k} ' free-run residual'],['Residual (' un{k} ')'],sprintf('S%d_%s_Residual',13+k,short{k}),out);out=parity(yt(:,k),bb(:,k),r,'N4SID_Motor',[nm{k} ' validation parity'],sprintf('S%d_%s_Parity',16+k,short{k}),un{k},out);out=inputCorr(er,Zv.InputData,r,'N4SID_Motor',[nm{k} ' residual-input correlation'],sprintf('S%d_%s_Residual_Input_Correlation',19+k,short{k}),out);end
 ff=figure('Visible','off','Color','w');aa=axes(ff);plot(aa,sw(:,1),sw(:,2),'o-');hold(aa,'on');plot(aa,sw(:,1),sw(:,3),'s-');plot(aa,sw(:,1),sw(:,4),'^-');grid(aa,'on');xlabel(aa,'State order');ylabel(aa,'Validation RMSE');title(aa,'Motor N4SID model-order comparison');legend(aa,{'RPM','Current','Torque'});out=saveFig(ff,r,'N4SID_Motor','S17_Model_Order',out);
 try,save(fullfile(runDir,'EV_Motor_N4SID.mat'),'best','ord','u0','us','y0','ys','Ze','Zv','fit1','fitf','sw');catch,end
-fprintf('[EV_Graphs] Motor N4SID order=%d; one-step fit=%s; free-run fit=%s\n',ord,mat2str(fit1,3),mat2str(fitf,3));
+out=fitPlot(fit1,fitf,r,'N4SID_Motor','Motor N4SID validation fit','S18_Validation_Fit',{'RPM','Current','Torque'},out);
+ fprintf('[EV_Graphs] Motor N4SID order=%d; one-step fit=%s; free-run fit=%s\n',ord,mat2str(fit1,3),mat2str(fitf,3));
 end
 function out=three(t,y,a,b,r,g,ttl,nm,unit,out)
 n=min([numel(t),numel(y),numel(a),numel(b)]);f=figure('Visible','off','Color','w','Position',[100 100 1400 820]);ax=axes(f);plot(ax,t(1:n),y(1:n),'LineWidth',2);hold(ax,'on');plot(ax,t(1:n),a(1:n),'--','LineWidth',1.8);plot(ax,t(1:n),b(1:n),':','LineWidth',2);grid(ax,'on');xlabel(ax,'Validation time (s)');ylabel(ax,unit);title(ax,ttl,'FontWeight','bold');legend(ax,{'Measured','N4SID one-step','N4SID free-run'},'Location','best');out=saveFig(f,r,g,nm,out);
@@ -144,6 +146,11 @@ for q=1:size(U,2)
  u=U(:,q)-mean(U(:,q));ee=e-mean(e);[c,l]=xcorr(u,ee,lag,'coeff');plot(a,l,c,'LineWidth',1.4,'DisplayName',sprintf('Input %d',q));
 end
 bound=1.96/sqrt(numel(e));yline(a,bound,'k--');yline(a,-bound,'k--');grid(a,'on');xlabel(a,'Lag (samples)');ylabel(a,'Cross-correlation');title(a,ttl,'FontWeight','bold');legend(a,'Location','best');
+out=saveFig(f,r,g,nm,out);
+end
+function out=fitPlot(f1,ff,r,g,ttl,nm,labels,out)
+f1=f1(:)';ff=ff(:)';n=min([numel(f1),numel(ff),numel(labels)]);if n<1,return,end
+f=figure('Visible','off','Color','w','Position',[100 100 1100 720]);a=axes(f);bar(a,[f1(1:n);ff(1:n)]');grid(a,'on');xlabel(a,'Output channel');ylabel(a,'Validation fit (%)');title(a,ttl,'FontWeight','bold');set(a,'XTick',1:n,'XTickLabel',labels(1:n));legend(a,{'One-step','Free-run'},'Location','best');
 out=saveFig(f,r,g,nm,out);
 end
 function out=saveFig(f,r,g,nm,out)
