@@ -4413,7 +4413,26 @@ if bdIsLoaded(MDL)
     end
     userStop = p.Results.StopTime;
     if isempty(userStop), userStop = evStopTime(MDL); end          % V7.8: the value typed in the toolbar
-    close_system(MDL,0);                       % reload from disk
+    % Preserve manual layout edits (e.g., battery current/voltage sensors) before reload.
+    % Only rebuild-owned EV_LIVE_* and EV_BlackBox/BB_TapGoto_* items are managed below.
+    try
+        isDirty = strcmpi(get_param(MDL,'Dirty'),'on');
+    catch
+        isDirty = false;
+    end
+    if isDirty
+        fprintf('[DAQ] Unsaved model edits detected; saving before reload ...\\n');
+        try
+            save_system(MDL);
+            fprintf('[DAQ] Current model layout saved.\\n');
+        catch ME_save
+            error('EV_DAQ:SaveBeforeReloadFailed', ...
+                'Could not save the open model; it was not closed. Save the model manually and retry. Details: %s', ME_save.message);
+        end
+    else
+        fprintf('[DAQ] Open model has no unsaved layout edits.\\n');
+    end
+    close_system(MDL,0);                       % safe now: dirty layout changes were saved first
     load_system(fullfile(root,[MDL '.slx']));
     if isfinite(userStop) && userStop > 0, set_param(MDL,'StopTime',sprintf('%.10g',userStop)); fprintf('[DAQ] Stop Time kept: %g s\n', userStop); end
 elseif ~isempty(p.Results.StopTime)
