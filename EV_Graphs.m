@@ -52,7 +52,7 @@ case 'generate'
  out=batteryID(runDir,root,out);out=motorID(C,t,runDir,root,out);
  try,f=fopen(fullfile(root,'Graph_Inventory.txt'),'w');fprintf(f,'EV Digital Twin graph inventory\n%s\n',char(datetime('now')));for k=1:numel(out.files),fprintf(f,'%s\n',out.files{k});end;fprintf(f,'\nSkipped/unavailable:\n');for k=1:numel(out.warnings),fprintf(f,'- %s\n',out.warnings{k});end;fclose(f);catch,end
  out.status='complete';try,assignin('base','EV_Graphs_Result',out);catch,end
- fprintf('[EV_Graphs] Saved %d PNG/PDF graph files to %s. Figures contain no PASS/FAIL verdicts.\n',numel(out.files),root);
+ fprintf('[EV_Graphs] Saved %d PNG graph files to %s. Figures contain no PASS/FAIL verdicts.\n',numel(out.files),root);
 otherwise,error('Unknown action. Use EV_Graphs(''help'').');
 end
 end
@@ -156,5 +156,5 @@ f=figure('Visible','off','Color','w','Position',[100 100 1100 720]);a=axes(f);ba
 out=saveFig(f,r,g,nm,out);
 end
 function out=saveFig(f,r,g,nm,out)
-d=fullfile(r,g);if ~isfolder(d),mkdir(d);end;try,p=fullfile(d,[nm '.png']);exportgraphics(f,p,'Resolution',300);out.files{end+1}=p;catch ME,out.warnings{end+1}=[nm ': PNG export failed ' ME.message];end;try,p=fullfile(d,[nm '.pdf']);exportgraphics(f,p,'ContentType','vector');out.files{end+1}=p;catch,end;close(f);
+d=fullfile(r,g);if ~isfolder(d),mkdir(d);end;try,p=fullfile(d,[nm '.png']);exportgraphics(f,p,'Resolution',300);out.files{end+1}=p;catch ME,out.warnings{end+1}=[nm ': PNG export failed ' ME.message];end;close(f);
 end
