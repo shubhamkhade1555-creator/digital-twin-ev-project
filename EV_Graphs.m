@@ -30,13 +30,15 @@ case 'generate'
  out=single(C,t,root,'Battery',out,{'BatteryVoltage','Vbatt_V'},'Battery pack voltage','Voltage (V)','B01_Battery_Voltage');
  out=single(C,t,root,'Battery',out,{'BatteryCurrent','Ibatt_A'},'Battery pack current','Current (A)','B02_Battery_Current');
  out=single(C,t,root,'Battery',out,{'SOC','StateOfCharge'},'Battery state of charge','SOC (logged units)','B03_Battery_SOC');
- out=single(C,t,root,'Battery',out,{'BatteryTemperature','Temperature'},'Battery temperature','Temperature (degC)','B04_Battery_Temperature');
+ out=single(C,t,root,'Battery',out,{'BatteryTemperature','Tbatt_C','Temperature'},'Battery temperature','Temperature (degC)','B04_Battery_Temperature');
+ out=single(C,t,root,'Battery',out,{'BatteryTemperatureMax'},'Maximum battery cell temperature','Temperature (degC)','B08_Battery_Temperature_Max');
  vn=C.Properties.VariableNames;ix=find(contains(vn,'CellVoltage','IgnoreCase',true)|contains(vn,'Cell_Voltage','IgnoreCase',true)|contains(vn,'Vcell_','IgnoreCase',true));
  if ~isempty(ix),out=multi(C,t,root,out,ix,'Battery','Cell/group voltages','Voltage (V)','B05_Cell_Voltage');else,out.warnings{end+1}='Cell voltage: no cell-level columns logged';end
  V=col(C,{'BatteryVoltage','Vbatt_V'});I=col(C,{'BatteryCurrent','Ibatt_A'});if ~isempty(V)&&~isempty(I),out=draw(t,V(:).*I(:),root,'Battery','Battery power','Power (W)','B06_Battery_Power',out);out=batteryMonitor(t,V,I,root,out);end
  % Category 2: normal motor plots
  out=pair(C,t,root,out,{'RPMReference','RPM_Reference','rpm_ref'},{'RPM','MotorRPM','RPM_rpm'},'Motor RPM reference vs actual','Motor','Speed (rpm)','M01_RPM_Tracking');
  out=single(C,t,root,'Motor',out,{'MotorCurrent','Idc_f_A'},'Motor current (logged signal)','Current (A)','M02_Motor_Current');
+ out=single(C,t,root,'Motor',out,{'MotorTemperature','Tmotor_C'},'Motor housing temperature','Temperature (degC)','M12_Motor_Temperature');
  out=motorCurrentLimits(C,t,root,out,P);
  out=single(C,t,root,'Motor',out,{'MotorTorque','Torque_Nm','Torque','Tq_meas'},'Motor torque','Torque (N m)','M03_Motor_Torque');
  out=single(C,t,root,'Motor',out,{'DCLinkVoltage','Vdc_m_V','Vdc'},'DC-link voltage','Voltage (V)','M04_DC_Link_Voltage');
