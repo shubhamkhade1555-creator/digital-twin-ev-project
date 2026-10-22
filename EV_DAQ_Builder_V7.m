@@ -96,6 +96,10 @@ function EV_DAQ_Builder_V7(varargin)
 %          Formatting only - no engineering value is touched.
 %
 % V7.4 PATCH (after the verified run EV_RUN_20261008_163422: 22 of 24 V&V checks PASS, VV-008 / VV-023 FAIL on real physics)
+% FIX-3 OWNER POLICY (approved on 2026-10-22): VV-004 RMS, VV-008 steady average, and VV-023 hold-window
+%   acceptance use separate project limit cfg.vvMotorOperatingCurrent = 35 A. The motor datasheet continuous rating
+%   remains I_cont = 30 A and is explicitly UNCONFIRMED for continuous 35 A operation. Do not change I_cont, the
+%   physical limiter, or VV-022 I^2t budget. VV-003 remains 48 A (45 A limiter + 3 A margin).
 %   FIX-V  LIVE telemetry is an INSTANTANEOUS sample taken at multiples of 0.1 s = exactly 1000 PWM periods, so it always hits the same
 %          carrier phase (same aliasing class as FIX-K). Measured: Ibat LIVE -24.72 A vs 1 ms window mean -12.75 A at t = 0.1 s,
 %          torque 3.43 vs 3.26 Nm. The LIVE line is now labelled "_inst"; 11_Live_Telemetry.xlsx gets the matching 1 ms window means
@@ -1992,7 +1996,8 @@ cfg.Ts_live        = 0.1;            % LIVE telemetry period [s of SIMULATION ti
 cfg.maxBytes       = 20*1024*1024;   % every output file must stay below this
 cfg.targetMax_s    = 180;            % 3 minute limit (PASS/FAIL)
 cfg.targetIdeal_s  = 120;            % ideal (2 min)
-cfg.vvPeakCurrent  = 48;             % V&V limit for peak motor current [A] = 45 A limiter + ~3 A overshoot margin (data never modified)
+cfg.vvPeakCurrent  = 48;             % Owner decision: retain VV-003 peak criterion (45 A limiter + ~3 A margin)
+cfg.vvMotorOperatingCurrent = 35;    % Owner-approved project acceptance limit for VV-004/VV-008/VV-023 only; datasheet 30 A continuous rating remains separate/unconfirmed
 cfg.auditMode      = false;          % true: rebuild + compare every column and read files back (slow, debug/audit only)
 cfg.cellVmax       = 4.19;           % cell diagnostics thresholds (diagnostic defaults, listed in 04_VV_Results/Limits)
 cfg.cellVmin       = 2.5;
@@ -2497,9 +2502,10 @@ end
 if hd(im)
     pI = max(abs(im),[],'omitnan');  rI = rmsf(im);  ss = max(abs(im(late)),[],'omitnan');
     rows(end+1,:) = vr('VV-003',sprintf('Peak motor current <= %.0f A',P.I_peak_VV),'MotorCurrent','max(|I|)',P.I_peak_VV,pI,pI-P.I_peak_VV,P.I_peak_VV, pI<=P.I_peak_VV); %#ok<AGROW>
-    rows(end+1,:) = vr('VV-004',sprintf('RMS motor current <= %.0f A',P.I_cont),'MotorCurrent','rms(I)',P.I_cont,rI,rI-P.I_cont,P.I_cont, rI<=P.I_cont); %#ok<AGROW>
+    Iop = cfg.vvMotorOperatingCurrent;
+    rows(end+1,:) = vr('VV-004',sprintf('RMS motor current <= %.0f A (project limit; datasheet continuous rating %.0f A unconfirmed for 35 A operation)',Iop,P.I_cont),'MotorCurrent','rms(I)',Iop,rI,rI-Iop,Iop, rI<=Iop); %#ok<AGROW>
     ssm = mean(abs(im(late)),'omitnan');
-    rows(end+1,:) = vr('VV-008',sprintf('Steady-state average current <= %.0f A (V7: average, ripple peaks are limited by VV-003)',P.I_cont),'MotorCurrent','mean(|I|, last 10%)',P.I_cont,ssm,ssm-P.I_cont,P.I_cont, ssm<=P.I_cont); %#ok<AGROW>
+    rows(end+1,:) = vr('VV-008',sprintf('Steady-state average current <= %.0f A project limit (datasheet continuous rating %.0f A; 35 A operation unconfirmed)',Iop,P.I_cont),'MotorCurrent','mean(|I|, last 10%)',Iop,ssm,ssm-Iop,Iop, ssm<=Iop); %#ok<AGROW>
 else
     rows(end+1,:) = na('VV-003','Peak motor current','MotorCurrent'); rows(end+1,:) = na('VV-004','RMS motor current','MotorCurrent'); rows(end+1,:) = na('VV-008','Steady-state current','MotorCurrent'); %#ok<AGROW>
 end
@@ -2611,8 +2617,8 @@ rows(end+1,:) = vr('VV-022','I^2t above I_cont stays inside the datasheet budget
 mkH = okI & t >= tHold;
 if nnz(mkH) > 5
     ssH = mean(abs(im(mkH)));
-    rows(end+1,:) = vr('VV-023',sprintf('Hold window (t >= %.3f s) mean current <= I_cont = %.0f A (V7.2: phase-separated, VV-008 window overlaps the load ramp)',tHold,P.I_cont), ...
-        'MotorCurrent','mean(|I|, t >= load end)',P.I_cont,ssH,ssH-P.I_cont,P.I_cont, ssH <= P.I_cont); %#ok<AGROW>
+    rows(end+1,:) = vr('VV-023',sprintf('Hold-window mean current <= %.0f A project limit (datasheet continuous rating %.0f A; 35 A operation unconfirmed)',Iop,P.I_cont), ...
+        'MotorCurrent','mean(|I|, t >= load end)',Iop,ssH,ssH-Iop,Iop, ssH <= Iop); %#ok<AGROW>
 else
     rows(end+1,:) = na('VV-023','Hold-window current','MotorCurrent'); %#ok<AGROW>
 end
@@ -3829,6 +3835,11 @@ id = VVT.RequirementID;
 sub = @(l) VVT(ismember(id, l),:);
 summ = [VVT(:,{'RequirementID','Requirement','Status'}); cell2table({'OVERALL','Overall V&V status',vvStr}, 'VariableNames', {'RequirementID','Requirement','Status'})];
 lim = VVT(:,{'RequirementID','Requirement','Expected','Limit'});
+% Owner-approved motor-current policy: project threshold is not a datasheet rating.
+policyRows = {'POLICY-I30','Motor datasheet continuous-current rating','30 A','UNCONFIRMED for continuous operation at 35 A'; ...
+              'POLICY-I35','Project acceptance limit for VV-004 / VV-008 / VV-023','35 A','Owner approved; project criterion only'; ...
+              'POLICY-IPEAK','VV-003 peak-current acceptance criterion','48 A','Retained by owner; 45 A limiter + 3 A margin'};
+lim = [lim; cell2table(policyRows,'VariableNames',lim.Properties.VariableNames)];
 if isfield(CD,'th') && isstruct(CD.th)
     th = CD.th;
     cr = {'CELL-001','Cell voltage max (diagnostic threshold)',   '-', n2s(th.vMax); ...
