@@ -8,42 +8,18 @@
 > **Project Title:** Design and Development of a Black-Box Model-Based Real-Time Digital Twin for an Electric Vehicle Battery Using MATLAB/Simulink  
 > **Repository:** `shubhamkhade1555-creator/digital-twin-ev-project`
 
-## Comparison graph utility
+## Automatic comparison graphs (no extra MATLAB command)
 
-Use `EV_MakeComparisonGraphs.m` to create one clearly named comparison figure per available channel and save both PNG and MATLAB FIG files to `EV_COMPARISON_GRAPHS/`. The utility avoids reusing the same actual-only plot as if it were a validation comparison.
+Comparison graph generation is integrated into the existing `EV_DAQ_Builder_V7.m` StopFcn post-processing workflow. The same graph step runs automatically when you:
 
-### Run from MATLAB R2024b
+- use `RunAll`, or
+- open the Simulink model and click **Run**.
 
-```matlab
-% First run the existing DAQ/simulation pipeline so EV_DAQ_Clean is available.
-RunAll
+No separate graph-generation command or extra MATLAB helper source file is required. Run outputs are saved under the current simulation's existing `Figures/Motor` folder. Existing battery and System Identification validation plots continue to be handled by the project's existing pipeline.
 
-% Battery black-box comparison: pass the identified idss model if available.
-% Replace sysModel below with the actual model variable loaded from your .mat.
-EV_MakeComparisonGraphs(EV_DAQ_Clean, sysModel);
+The integrated motor comparisons include RPM reference vs actual RPM and motor current vs the configured continuous/peak current limits. Motor voltage, torque/load, and DC-link reference comparisons are generated only when the required measured and reference channels are present in the cleaned DAQ table. Missing reference data is skipped rather than fabricated.
 
-% Or create plant/reference comparisons only when no battery model is loaded.
-EV_MakeComparisonGraphs(EV_DAQ_Clean, []);
-```
-
-You can limit a plot set to a specific time window:
-```matlab
-opts = struct('OutputDir', fullfile(pwd,'EV_COMPARISON_GRAPHS_0p5s'), ...
-              'ShowFigures', true, 'TimeRange', [0 0.5]);
-EV_MakeComparisonGraphs(EV_DAQ_Clean, [], opts);
-```
-
-### Comparison semantics
-
-- **Battery voltage/current:** when an identified battery state-space model is supplied, the validation plots overlay Simulink measurements, black-box one-step prediction, and black-box free-run simulation.
-- **Motor RPM:** actual speed is compared against the logged RPM reference/setpoint.
-- **Motor current:** actual current is compared against a logged current reference or limit if that signal exists.
-- **Motor voltage, torque/load and DC-link voltage:** comparisons are generated only when a matching reference/load channel exists in the logged data. Missing signals are skipped rather than fabricated.
-- **Residuals:** generated only when measured and prediction channels are explicitly present in the input table.
-
-**Important model boundary:** the currently documented identified black-box model predicts battery terminal voltage and battery current from RPM and motor-current inputs. It is not a motor black-box model. Motor-voltage/current/RPM/torque black-box one-step and free-run curves require separately identifying a motor model and logging the corresponding outputs; the plotting utility does not invent those predictions.
-
-The plotting utility accepts a MATLAB table or timetable with a numeric time channel in seconds and numeric signal columns. Channel names are matched against explicit aliases in the script. If your DAQ uses different names, add those exact names to the corresponding alias list in `EV_MakeComparisonGraphs.m`.
+**Model boundary:** the current N4SID black-box model predicts battery voltage and battery current. Motor one-step/free-run prediction curves require a separately identified motor model; the plotting code does not mislabel measured plant channels as black-box motor predictions.
 
 ## Existing project pipeline
 
