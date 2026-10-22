@@ -4,9 +4,8 @@ function result = RunAll(varargin)
 %   RunAll                  full run: paths -> checks -> load -> setup -> simulate -> verify
 %   RunAll('Fixes',false)   skip the "buck snubber = exclude" model fix
 %   RunAll('Timeout',1800)  maximum wall-clock seconds to wait for the simulation (default 3600)
-%   RunAll('StopTime',0.1)  simulate 0.1 s (any value). Without this option RunAll uses the Stop Time that is
-%                           currently typed in the Simulink toolbar of the open model; only if the model is
-%                           not open it uses the value saved in the .slx file.
+%   RunAll('StopTime',0.1)  simulate 0.1 s (any value). Without this option RunAll uses the open model's Stop Time,
+%                           or the saved .slx value when the model is not open.
 %   RunAll('Compile',true)  also run a separate compile check first (default off: one compile less, faster start)
 %   RunAll('Fast',true)     fast post-processing (default): retain CSV/text, V&V, N4SID and PNG graphs
 %   RunAll('FastRestart',true) reuse compiled model across repeated runs (first run still compiles).
@@ -270,7 +269,9 @@ end
 say('[RunAll]    Stop Time of the model for this run: %g s', t_stop);
 
 %% ---- 7. compile check -----------------------------------------------------------------------------
-if p.Results.Compile
+if p.Results.Compile && fastRestartActive
+    say('[RunAll] 7. Compile check skipped: Fast Restart is already initialized/compiled.');
+elseif p.Results.Compile
     say('[RunAll] 7. Compile check (update diagram) ...');
     try
         if ~bdIsLoaded(MDL), load_system(fullfile(root, [MDL '.slx'])); end
