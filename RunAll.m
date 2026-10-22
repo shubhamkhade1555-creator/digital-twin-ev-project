@@ -22,14 +22,11 @@ function result = RunAll(varargin)
 %     - The full data archive is written by EV_DAQ_Builder_V7 to EV_RUN_<time>/ (its own command log is inside)
 %     - Returns a struct: result.pass / warn / fail counts, result.checks table, result.runDir, result.logFile
 %
-%   STEP 10: numbered clean data + comparison graphs (our system vs Electrica 2022 reference). Done by EV_MakeReference, which the
-%     Simulink StopFcn also starts, so a manual Run in Simulink (Stop Time typed in the toolbar) saves exactly the same.
-%     Every run keeps its files in its own run folder:
-%       Simulation Logs\EV_RUN_<date_time>\EV_DAQ_Clean_<run no>_<seconds x 10>.mat / .csv   (0.1 s -> _1_01, 4th run 0.5 s -> _4_05)
-%       Simulation Logs\EV_RUN_<date_time>\Figures\Battery\   Battery_1..4
-%       Simulation Logs\EV_RUN_<date_time>\Figures\Motor\     Motor_1..5
-%       Simulation Logs\EV_RUN_<date_time>\Figures\           Battery_MASTER, Motor_MASTER, Combined_MASTER + Reference_Master.xlsx
-%     Reference mode: EV_Ref_Mode = 'calculated' (default) | 'live' | 'original' (type in Command Window).
+%   STEP 10: unified Battery, Motor and N4SID graph generation through EV_Graphs.m.
+%     RunAll and the model StopFcn use the same graph source; duplicate generation is avoided.
+%     Figures are saved under each run's Figures\Battery, Figures\Motor,
+%     Figures\N4SID_Battery and Figures\N4SID_Motor folders. PNG (300 dpi) and vector PDF are used where supported.
+%     PASS/FAIL verdicts remain in text/CSV reports and are not written on graphs.
 %
 %   RunAll does NOT change any physics or parameter. It only calls the existing project files.
 
