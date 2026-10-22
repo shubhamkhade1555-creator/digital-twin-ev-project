@@ -2913,6 +2913,8 @@ sf('Speed.png',           @() plotSet(t, {col(C,'RPMReference'),col(C,'RPM')}, {
 sf('Battery_Voltage.png', @() plotSet(t, {col(C,'BatteryVoltage')}, {'Battery voltage'}, 'Battery Voltage vs Time', 'Voltage [V]'));
 sf('Battery_Current.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
 sf('Battery_Current_Corrected.png', @() plotSet(t, {col(C,'BatteryCurrent')}, {'Battery discharge current'}, 'Battery Discharge Current vs Time', 'Discharge Current [A]'));
+sf('Battery_Voltage_Sensor_Comparison.png', @() plotSet(t, {col(C,'BatteryVoltage'),col(C,'BatteryVoltageSensor')}, {'Existing battery voltage log','Physical voltage sensor'}, 'Battery Voltage: Existing Log vs Physical Sensor', 'Voltage [V]'));
+sf('Battery_Current_Sensor_Comparison.png', @() plotSet(t, {col(C,'BatteryCurrent'),col(C,'BatteryCurrentSensor')}, {'Existing battery current log','Physical current sensor'}, 'Battery Current: Existing Log vs Physical Sensor', 'Current [A]'));
 sf('Motor_Current.png',   @() plotSet(t, {col(C,'MotorCurrent')}, {'Motor current (log_Idc_f)'}, 'Motor Current vs Time', 'Current [A]'));
 sf('SOC.png',             @() plotSet(t, {col(C,'SOC')}, {'SOC'}, 'State of Charge vs Time', 'SOC [0..1]'));
 sf('DC_Link.png',         @() plotSet(t, {col(C,'DCLinkVoltage')}, {'DC-link voltage'}, 'DC-Link Voltage vs Time', 'DC-Link Voltage [V]'));
