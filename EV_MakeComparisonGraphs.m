@@ -92,6 +92,9 @@ specs = {
 made = strings(0,1);
 for k = 1:size(specs,1)
     key = specs{k,1}; aliases = specs{k,2}; refAliases = specs{k,3};
+    % Battery validation is handled once in the dedicated three-curve plots below.
+    % Do not also create actual-only or partial battery figures here.
+    if any(strcmp(key, {'BatteryVoltage','BatteryCurrent','SOC','BatteryTemperature'})), continue; end
     y = getSignal(data, aliases);
     if isempty(y), continue; end
     ref = getSignal(data, refAliases);
