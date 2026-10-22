@@ -8,7 +8,9 @@ function result = RunAll(varargin)
 %                           currently typed in the Simulink toolbar of the open model; only if the model is
 %                           not open it uses the value saved in the .slx file.
 %   RunAll('Compile',true)  also run a separate compile check first (default off: one compile less, faster start)
-%   RunAll('Fast',true)     fast mode (default): skip Excel workbooks and raw-archive compaction; retain CSV/text, V&V, N4SID and PNG graphs
+%   RunAll('Fast',true)     fast post-processing (default): retain CSV/text, V&V, N4SID and PNG graphs
+%   RunAll('FastRestart',true) reuse compiled model across repeated runs (first run still compiles).
+%                            Turn FastRestart off before manually editing/adding Simulink blocks.
 %
 %   HOW TO USE (every group member):
 %     1. Put RunAll.m in the SAME folder as BLDCSpeedControl_EV_Layout_v2.slx and EV_DAQ_Builder_V7.m
@@ -35,6 +37,7 @@ addParameter(p, 'Fixes',   true, @islogical);
 addParameter(p, 'Timeout', 3600, @isnumeric);
 addParameter(p, 'StopTime', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && x > 0));
 addParameter(p, 'Fast', true, @islogical); % fast post-processing is default; pass Fast=false for full Excel reports
+addParameter(p, 'FastRestart', false, @islogical); % opt-in: keep compiled model for repeated runs in this MATLAB session
 addParameter(p, 'Compile', false, @islogical);   % true = separate compile check before the run (the run compiles anyway; skipping saves one full Simscape compile)
 addParameter(p, 'FullValidation', true, @islogical); % enforce duration >= 0.400 s (min 0.350 s) for speed ramp, load ramp & hold
 addParameter(p, 'DiagnosticMode', false, @islogical); % allow short-run diagnostic simulations (< 0.350 s)
@@ -178,57 +181,86 @@ end
 
 %% ---- 5. models ----------------------------------------------------------------------------------
 say('[RunAll] 5. Loading models ...');
+fastRestartActive = false;
 if bdIsLoaded(MDL)
-    if ~strcmpi(get_param(MDL, 'SimulationStatus'), 'stopped')
-        error('RunAll:running', 'Model %s is still running. Press STOP, wait for Ready, then run again.', MDL);
+    stNow = get_param(MDL, 'SimulationStatus');
+    frOn = strcmpi(get_param(MDL, 'FastRestart'), 'on');
+    % A completed Fast Restart run leaves the model initialized. Keep it initialized
+    % only when explicitly requested; otherwise disable it before allowing setup/editing.
+    if frOn && strcmpi(stNow, 'initialized') && ~p.Results.FastRestart
+        set_param(MDL, 'FastRestart', 'off');
+        stNow = get_param(MDL, 'SimulationStatus');
+        say('[RunAll]    Fast Restart disabled; model released for normal setup/editing.');
+        frOn = false;
+    elseif frOn && ~strcmpi(stNow, 'initialized')
+        set_param(MDL, 'FastRestart', 'off');
+        stNow = get_param(MDL, 'SimulationStatus');
+        say('[RunAll]    stale Fast Restart state cleared before setup.');
+        frOn = false;
     end
-    % Keep the already-loaded model in memory. Closing/reloading invalidates reusable
-    % compiled state and slows every run. Save manual layout edits before setup.
-    try
-        isDirty = strcmpi(get_param(MDL, 'Dirty'), 'on');
-    catch
-        isDirty = false;
+    fastRestartActive = p.Results.FastRestart && frOn && strcmpi(stNow, 'initialized');
+    if ~strcmpi(stNow, 'stopped') && ~fastRestartActive
+        error('RunAll:running', 'Model %s is in state "%s". Press STOP, wait for Ready, or disable Fast Restart before setup.', MDL, stNow);
     end
-    if isDirty
-        say('[RunAll]    unsaved model edits detected; saving before setup ...');
-        try
-            save_system(MDL);
-            say('[RunAll]    saved current model edits.');
-        catch ME_save
-            error('RunAll:SaveBeforeReloadFailed', ...
-                'Could not save the open model; RunAll stopped without closing it. Save manually and retry. Details: %s', ME_save.message);
-        end
+    if fastRestartActive
+        say('[RunAll]    Fast Restart compiled model reused; no block rebuild/save will run.');
     else
-        say('[RunAll]    reusing the loaded model (no close/reload).');
+        % Keep the loaded model in memory. Never discard unsaved manual sensor/layout edits.
+        try
+            isDirty = strcmpi(get_param(MDL, 'Dirty'), 'on');
+        catch
+            isDirty = false;
+        end
+        if isDirty
+            say('[RunAll]    unsaved model edits detected; saving before setup ...');
+            try
+                save_system(MDL);
+                say('[RunAll]    saved current model edits.');
+            catch ME_save
+                error('RunAll:SaveBeforeReloadFailed', ...
+                    'Could not save the open model; RunAll stopped without closing it. Save manually and retry. Details: %s', ME_save.message);
+            end
+        else
+            say('[RunAll]    reusing the loaded model (no close/reload).');
+        end
     end
 end
 if ~isempty(userStop)
-    load_system(fullfile(root, [MDL '.slx']));
-    set_param(MDL, 'StopTime', sprintf('%.10g', userStop));   % re-apply: the reload gave back the value saved on disk
-    say('[RunAll]    model Stop Time set to %g s after the reload.', userStop);
+    if ~bdIsLoaded(MDL), load_system(fullfile(root, [MDL '.slx'])); end
+    currentStop = str2double(strtrim(get_param(MDL, 'StopTime')));
+    if ~isfinite(currentStop) || abs(currentStop-userStop) > max(1e-12, 1e-9*abs(userStop))
+        set_param(MDL, 'StopTime', sprintf('%.10g', userStop));
+        say('[RunAll]    model Stop Time updated to %g s.', userStop);
+    else
+        say('[RunAll]    model Stop Time retained at %g s.', userStop);
+    end
 end
 % clear results of an earlier run so they cannot be mistaken for this run
 evalin('base', 'clear EV_BlackBox_log EV_DAQ_Clean EV_DAQ_Raw EV_DAQ_RunDir EV_MakeRef_Name EV_MakeRef_Busy');
 
 %% ---- 6. model fix + DAQ setup (builds + saves EV_BlackBox, does not start) ------------------------
-% The model's own simulation start performs compilation. During this coordinated RunAll path,
-% defer helper compile checks so one run does not compile the same Simscape model multiple times.
-assignin('base','EV_DAQ_DeferCompile',true);
-try
-    if p.Results.Fixes
-        say('[RunAll] 6a. Model fix: buck snubber -> exclude ...');
-        feval(BUILDER, 'Fixes', 1);
+if fastRestartActive
+    say('[RunAll] 6. Fast Restart cache is active: skipped model fixes, block rebuild and save.');
+else
+    % The model's own simulation start performs compilation. During this coordinated RunAll path,
+    % defer helper compile checks so one run does not compile the same Simscape model multiple times.
+    assignin('base','EV_DAQ_DeferCompile',true);
+    try
+        if p.Results.Fixes
+            say('[RunAll] 6a. Model fix: buck snubber -> exclude ...');
+            feval(BUILDER, 'Fixes', 1);
+        end
+        say('[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...');
+        feval(BUILDER, 'Run', false);
+    catch ME
+        evalin('base','clear EV_DAQ_DeferCompile');
+        R = rarec(R, say, 'FAIL', 'DAQ setup', ME.message);
+        result = rafinish(result, R, say, root, stamp, toc(tAll));
+        return
     end
-    say('[RunAll] 6b. DAQ setup (builds the LIVE tap and the Black Box, saves the model) ...');
-    feval(BUILDER, 'Run', false);
-catch ME
     evalin('base','clear EV_DAQ_DeferCompile');
-    R = rarec(R, say, 'FAIL', 'DAQ setup', ME.message);
-    result = rafinish(result, R, say, root, stamp, toc(tAll));
-    return
+    R = rarec(R, say, 'PASS', 'DAQ setup', 'model loaded, Black Box built, hooks written, model saved');
 end
-evalin('base','clear EV_DAQ_DeferCompile');
-R = rarec(R, say, 'PASS', 'DAQ setup', 'model loaded, Black Box built, hooks written, model saved');
 
 try
     v = str2double(strtrim(get_param(MDL, 'StopTime')));
@@ -249,11 +281,28 @@ if p.Results.Compile
         result = rafinish(result, R, say, root, stamp, toc(tAll));
         return
     end
+elseif fastRestartActive
+    say('[RunAll] 7. Separate compile check skipped; retaining Fast Restart compiled state.');
 else
     say('[RunAll] 7. Separate compile check skipped (the simulation start compiles the model once; use RunAll(''Compile'',true) to force it).');
 end
 
 %% ---- 8. simulate ------------------------------------------------------------------------------------
+fastRestartEnabled = fastRestartActive;
+if p.Results.FastRestart && ~fastRestartActive
+    try
+        set_param(MDL, 'FastRestart', 'on');
+        fastRestartEnabled = strcmpi(get_param(MDL, 'FastRestart'), 'on');
+        if fastRestartEnabled
+            say('[RunAll] Fast Restart enabled. First run still compiles; repeat runs may reuse the initialized model.');
+        end
+    catch ME_fr
+        fastRestartEnabled = false;
+        R = rarec(R, say, 'WARN', 'Fast Restart', ['Could not enable Fast Restart; using normal simulation: ' ME_fr.message]);
+    end
+elseif fastRestartActive
+    say('[RunAll] Fast Restart already initialized; reusing the compiled model.');
+end
 say('[RunAll] 8. Starting simulation (t_stop = %g s). [LIVE] lines follow ...', t_stop);
 say('--------------------------------------------------------------');
 % Time this call separately: Simulink may spend a long time compiling/initializing
@@ -265,7 +314,8 @@ say('[RunAll]    start-command wall time (compile/startup if blocking): %.1f s',
 tw = tic;  seen = false;  beat = 0;
 while toc(tw) < p.Results.Timeout
     st = get_param(MDL, 'SimulationStatus');
-    if ~strcmpi(st, 'stopped')
+    idleState = strcmpi(st, 'stopped') || (fastRestartEnabled && strcmpi(st, 'initialized'));
+    if ~idleState
         seen = true;
         if toc(tw) - beat >= 5
             beat = toc(tw);
@@ -277,16 +327,18 @@ while toc(tw) < p.Results.Timeout
     elseif toc(tw) > 60
         break
     end
-    pause(0.5);                      % lets the model callbacks (LIVE tap, StopFcn) run
+    pause(0.5);                      % lets model callbacks (LIVE tap, StopFcn) run
 end
 if ~seen
     R = rarec(R, say, 'FAIL', 'Simulation start', 'the simulation never started (see Simulink Diagnostic Viewer)');
     result = rafinish(result, R, say, root, stamp, toc(tAll));
     return
 end
-if ~strcmpi(get_param(MDL, 'SimulationStatus'), 'stopped')
+stEnd = get_param(MDL, 'SimulationStatus');
+idleAtEnd = strcmpi(stEnd, 'stopped') || (fastRestartEnabled && strcmpi(stEnd, 'initialized'));
+if ~idleAtEnd
     set_param(MDL, 'SimulationCommand', 'stop');
-    R = rarec(R, say, 'FAIL', 'Simulation time', sprintf('timeout after %g s - simulation stopped by RunAll', p.Results.Timeout));
+    R = rarec(R, say, 'FAIL', 'Simulation time', sprintf('timeout after %g s - simulation stopped by RunAll (state=%s)', p.Results.Timeout, stEnd));
 end
 pause(2); drawnow;                   % give the StopFcn (data archive) time to start; it runs to completion
 for k = 1:120                        % wait up to ~2 min for the archive data
