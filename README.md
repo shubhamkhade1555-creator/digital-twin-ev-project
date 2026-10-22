@@ -8,18 +8,20 @@
 > **Project Title:** Design and Development of a Black-Box Model-Based Real-Time Digital Twin for an Electric Vehicle Battery Using MATLAB/Simulink  
 > **Repository:** `shubhamkhade1555-creator/digital-twin-ev-project`
 
-## Automatic comparison graphs (no extra MATLAB command)
+## Unified production graphs
 
-Comparison graph generation is integrated into the existing `EV_DAQ_Builder_V7.m` StopFcn post-processing workflow. The same graph step runs automatically when you:
+`EV_Graphs.m` is the dedicated source for normal Battery and Motor plots plus N4SID validation comparisons. It writes 300 dpi PNG and vector PDF figures where supported. Plots intentionally do not contain PASS/FAIL verdicts; those remain in the text/CSV validation reports. Missing signals and inadequate excitation are recorded in `Figures/Graph_Inventory.txt`.
 
-- use `RunAll`, or
-- open the Simulink model and click **Run**.
+The DAQ StopFcn invokes the graph source after data logging and battery N4SID identification. `RunAll.m` uses the same pipeline and avoids duplicate graph generation when the StopFcn already completed.
 
-No separate graph-generation command or extra MATLAB helper source file is required. Run outputs are saved under the current simulation's existing `Figures/Motor` folder. Existing battery and System Identification validation plots continue to be handled by the project's existing pipeline.
+Manual testing (after the DAQ callback hooks have been installed):
+- `EV_Graphs('help')`
+- `EV_Graphs('run',0.1)`
+- `EV_Graphs('run',0.2)`
+- `EV_Graphs('run',0.4)`
+- `EV_Graphs('run',0.5)`
 
-The integrated motor comparisons include RPM reference vs actual RPM and motor current vs the configured continuous/peak current limits. Motor voltage, torque/load, and DC-link reference comparisons are generated only when the required measured and reference channels are present in the cleaned DAQ table. Missing reference data is skipped rather than fabricated.
-
-**Model boundary:** the current N4SID black-box model predicts battery voltage and battery current. Motor one-step/free-run prediction curves require a separately identified motor model; the plotting code does not mislabel measured plant channels as black-box motor predictions.
+Battery prediction plots use the saved battery N4SID model and its held-out validation data. Motor prediction plots are produced only if a separate motor N4SID model can be estimated from sufficiently informative logged data; otherwise the inventory explains why they were skipped.
 
 ## Existing project pipeline
 
